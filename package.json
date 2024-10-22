@@ -1,0 +1,17 @@
+{
+  "name": "ranyou",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "format": "prettier --write .",
+    "server": "cd ./packages/server && npm run dev",
+    "client": "cd ./packages/client && npm run dev"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  },
+  "workspaces": [
+    "packages/client",
+    "packages/server"
+  ]
+}
