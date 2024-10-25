@@ -1,17 +1,20 @@
 {
   "name": "ranyou",
   "version": "0.0.1",
-  "private": true,
+  "description": "ranyou root workspace",
+  "main": "index.js",
   "scripts": {
-    "format": "prettier --write .",
-    "server": "cd ./packages/server && npm run dev",
-    "client": "cd ./packages/client && npm run dev"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "format": "prettier --write ."
   },
+  "author": "4lineclear",
+  "license": "MIT",
   "devDependencies": {
     "prettier": "^3.3.3"
   },
   "workspaces": [
-    "packages/client",
-    "packages/server"
+    "packages/client"
   ]
 }

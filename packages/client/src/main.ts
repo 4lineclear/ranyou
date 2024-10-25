@@ -1,10 +1,63 @@
 import './style.css';
+import frag from './frag';
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div>
-    <h1>Ran(dom) You(Tube)</h1>
-  </div>
+// TODO: create builder type
+
+const title = () => {
+  const title = document.createElement('h1');
+  title.innerText = 'Ran(dom) You(Tube)';
+  return title;
+};
+
+const form = () => {
+  return frag().add(document.createElement('label')).toElement('form');
+};
+
+const renderMenuPage = () => {
+  return frag().add(title).add(form).toElement('div');
+};
+
+const renderPlayerPage = () => {
+  return frag().add(title).toElement('div');
+};
+
+`<div id="menu">
+        <h1>Ran(dom) You(Tube)</h1>
+        <form action="/">
+          <label for="playlist-id">Playlist ID</label>
+          <input type="text" name="playlist-id" />
+          <input type="submit" value="Play List" />
+        </form>
+      </div>
 `;
+const main = () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const playlistId = urlParams.get('playlist-id');
+  const app = document.querySelector<HTMLDivElement>('#app')!;
+  if (playlistId) {
+    window.onload = () => {
+      app.replaceChildren(renderPlayerPage());
+    };
+  } else {
+    window.onload = () => {
+      app.replaceChildren(renderMenuPage());
+    };
+  }
+};
+
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  document.body.classList.add('dark');
+}
+
+main();
+
+// document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+//   <div>
+//     <h1>Ran(dom) You(Tube)</h1>
+//     <form>
+//     </form>
+//   </div>
+// `;
 
 // {
 //   "name": "ranyou",
