@@ -174,4 +174,4 @@ dist
 
 # Added by cargo
 
-/target
+/server/target

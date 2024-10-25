@@ -1,9 +1,9 @@
 [package]
-name = "ranyou-api"
-edition.workspace = true
-version.workspace = true
-authors.workspace = true
-license.workspace = true
+name = "ranyou"
+edition = "2021"
+version = "0.0.1"
+authors = ["4lineclear"]
+license = "MIT"
 
 [dependencies]
 aws-config = { version = "1.5", features = ["behavior-version-latest"] }
