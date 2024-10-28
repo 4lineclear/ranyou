@@ -172,6 +172,9 @@ dist
 .wrangler/
 
 
-# Added by cargo
+# Rust
 
 /server/target
+
+.shuttle*
+Secrets*.toml

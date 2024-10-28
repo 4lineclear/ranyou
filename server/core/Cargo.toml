@@ -1,0 +1,24 @@
+[package]
+name = "ranyou-core"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+axum = "0.7"
+# axum-macros = "0.4"
+chrono = "0.4"
+reqwest = { version = "0.12", features = ["json"] }
+serde = "1.0"
+thiserror = "1.0"
+tokio = { version = "1.41", features = ["full"] }
+# tower-http = { version = "0.6", features = ["cors"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# shared
+libsql = { workspace = true }
+
+[build-dependencies]
+dotenvy = "0.15"

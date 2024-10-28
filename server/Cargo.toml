@@ -1,24 +1,13 @@
-[package]
-name = "ranyou"
-edition = "2021"
-version = "0.0.1"
-authors = ["4lineclear"]
-license = "MIT"
+[workspace]
+members = ["core", "shuttle"]
+resolver = "2"
+package.edition = "2021"
+package.version = "0.0.1"
+package.authors = ["4lineclear"]
+package.license = "MIT"
 
-[dependencies]
-aws-config = { version = "1.5", features = ["behavior-version-latest"] }
-aws-sdk-dynamodb = "1.50"
-lambda_http = "0.13"
-lambda_runtime = "0.13"
-aws-sdk-lambda = "1.51"
-
-chrono = "0.4"
-google-youtube3 = "6.0"
-rustls = "0.23"
-thiserror = "1.0"
-serde = "1.0"
-tokio = { version = "1.41", features = ["macros"] }
-
-[build-dependencies]
-dotenvy = "0.15"
-# tower-http = { version = "0.6", features = ["cors"] }
+[workspace.dependencies]
+libsql = { version = "0.6", default-features = false, features = [
+	"core",
+	"remote",
+] }
