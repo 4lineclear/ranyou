@@ -1,46 +1,46 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::{errors::ResponseError, PlaylistItem};
+use crate::errors::ResponseResult;
+
+use super::PlaylistItem;
 
 #[derive(Debug, Clone)]
 pub struct YouTube {
     client: reqwest::Client,
-    key: String,
+    key: Arc<str>,
 }
 
 // PL8rnKz8DLviY61M2ehtoxoLw8ThC3a5ar
 
 impl YouTube {
     pub fn new(client: reqwest::Client, key: String) -> Self {
+        let key = key.into();
         Self { client, key }
     }
-    pub async fn get_items(&self, id: String) -> Result<Vec<PlaylistItem>, ResponseError> {
-        let start = tokio::time::Instant::now();
-        let items: Vec<_> = self
+    pub async fn get_items(&self, id: &str) -> ResponseResult<HashSet<PlaylistItem>> {
+        Ok(self
             .get_all(id)
             .await?
             .into_iter()
             .flat_map(map_res)
-            .collect();
-        tracing::info!("elapsed: {}", start.elapsed().as_millis());
-        tracing::info!("items_len: {}", items.len());
-        Ok(items)
+            .collect())
     }
 
-    async fn get_all(&self, id: String) -> Result<Vec<ApiResponse>, ResponseError> {
+    async fn get_all(&self, id: &str) -> ResponseResult<Vec<ApiResponse>> {
         let mut lists = Vec::new();
-        let mut res = self.get(&id, None).await?;
+        let mut res = self.get(id, None).await?;
         while let Some(next) = res.next_page_token.clone() {
             lists.push(res);
-            res = self.get(&id, Some(&next)).await?;
+            res = self.get(id, Some(&next)).await?;
         }
         Ok(lists)
     }
 
-    async fn get(&self, id: &str, token: Option<&str>) -> Result<ApiResponse, ResponseError> {
+    async fn get(&self, id: &str, token: Option<&str>) -> ResponseResult<ApiResponse> {
         let key = &self.key;
         let mut url = format!(
             "https://www.googleapis.com/youtube/v3/playlistItems?\
@@ -56,14 +56,14 @@ impl YouTube {
             url.push_str("&pageToken=");
             url.push_str(token);
         }
-        let response = self
+        Ok(self
             .client
             .get(url)
             .header("Accept", "application/json")
             .send()
-            .await?;
-        Ok(response.json().await?)
-        // Ok(map_res(res.json().await?))
+            .await?
+            .json()
+            .await?)
     }
 }
 
@@ -79,13 +79,12 @@ fn map_res(res: ApiResponse) -> impl Iterator<Item = PlaylistItem> {
             let snippet = pi.snippet?;
             let content_details = pi.content_details?;
             Some(PlaylistItem {
-                id: pi.id?,
                 added_at: snippet.published_at?,
                 title: snippet.title?,
                 description: snippet.description?,
                 channel_title: snippet.channel_title?,
                 channel_id: snippet.channel_id?,
-                position: snippet.position?,
+                position: snippet.position? as i32,
                 video_id: content_details.video_id?,
                 note: content_details.note.unwrap_or_default(),
                 published_at: content_details.video_published_at?,

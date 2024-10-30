@@ -1,24 +1,27 @@
-import './style.css';
-import frag from './frag';
+import "./style.css";
+import frag from "./frag";
 
 // TODO: create builder type
+//
+// TODO: see
+// https://stackoverflow.com/questions/76690112/how-to-use-youtube-embed-api-in-svelte
 
 const title = () => {
-  const title = document.createElement('h1');
-  title.innerText = 'Ran(dom) You(Tube)';
+  const title = document.createElement("h1");
+  title.innerText = "Ran(dom) You(Tube)";
   return title;
 };
 
 const form = () => {
-  return frag().add(document.createElement('label')).toElement('form');
+  return frag().add(document.createElement("label")).toElement("form");
 };
 
 const renderMenuPage = () => {
-  return frag().add(title).add(form).toElement('div');
+  return frag().add(title).add(form).toElement("div");
 };
 
 const renderPlayerPage = () => {
-  return frag().add(title).toElement('div');
+  return frag().add(title).toElement("div");
 };
 
 `<div id="menu">
@@ -32,8 +35,8 @@ const renderPlayerPage = () => {
 `;
 const main = () => {
   const urlParams = new URLSearchParams(window.location.search);
-  const playlistId = urlParams.get('playlist-id');
-  const app = document.querySelector<HTMLDivElement>('#app')!;
+  const playlistId = urlParams.get("playlist-id");
+  const app = document.querySelector<HTMLDivElement>("#app")!;
   if (playlistId) {
     window.onload = () => {
       app.replaceChildren(renderPlayerPage());
@@ -45,8 +48,11 @@ const main = () => {
   }
 };
 
-if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-  document.body.classList.add('dark');
+if (
+  window.matchMedia &&
+  window.matchMedia("(prefers-color-scheme: dark)").matches
+) {
+  document.body.classList.add("dark");
 }
 
 main();

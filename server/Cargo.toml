@@ -7,7 +7,3 @@ package.authors = ["4lineclear"]
 package.license = "MIT"
 
 [workspace.dependencies]
-libsql = { version = "0.6", default-features = false, features = [
-	"core",
-	"remote",
-] }

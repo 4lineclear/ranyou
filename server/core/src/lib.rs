@@ -1,8 +1,11 @@
 //! The main library
-//! NOTE: see https://github.com/awslabs/aws-lambda-rust-runtime/tree/main/examples
 
+pub mod database;
 pub mod errors;
+pub mod model;
 pub mod youtube;
+
+use std::{collections::HashSet, sync::Arc};
 
 use axum::{
     extract::{Query, State},
@@ -10,21 +13,35 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use tracing::{error, info};
 
-use self::youtube::YouTube;
+use self::{database::Database, errors::ResponseResult, model::PlaylistItem, youtube::YouTube};
+
+pub use bb8_postgres::tokio_postgres::Config;
+
+// TODO: work on client
+
+// TODO: connect client & server
 
 #[derive(Clone)]
 pub struct Context {
     youtube: YouTube,
+    database: Database,
 }
 
 impl Context {
-    pub async fn new(youtube_api_key: &str) -> Self {
+    /// Creates a new context,
+    ///
+    /// # Errors
+    ///
+    /// DB table creation failure
+    pub async fn new(youtube_api_key: &str, config: Config) -> ResponseResult<Self> {
         let client = reqwest::Client::new();
         let youtube = YouTube::new(client, youtube_api_key.to_owned());
-        Self { youtube }
+        let database = Database::new(config)?;
+        database.create_tables().await?;
+        Ok(Self { youtube, database })
     }
 }
 
@@ -35,25 +52,9 @@ struct PlaylistQuery {
 
 #[derive(Debug, Clone, Serialize)]
 struct PlaylistResponse {
-    items: Vec<PlaylistItem>,
+    items: Arc<HashSet<PlaylistItem>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PlaylistItem {
-    // playlist-video id
-    id: String,
-    // The date this item was added to the playlist
-    added_at: DateTime<Utc>,
-    title: String,
-    description: String,
-    channel_title: String,
-    channel_id: String,
-    position: u32,
-    video_id: String,
-    note: String,
-    // The date this item was added to youtube
-    published_at: DateTime<Utc>,
-}
 pub fn router(ctx: Context) -> Router {
     Router::new()
         .route("/", get(|| async { Html("hello, world!") }))
@@ -65,7 +66,27 @@ async fn get_playlist(
     State(ctx): State<Context>,
     Query(query): Query<PlaylistQuery>,
 ) -> axum::response::Result<Json<PlaylistResponse>> {
-    Ok(Json(PlaylistResponse {
-        items: ctx.youtube.get_items(query.playlist_id).await?,
-    }))
+    let id = query.playlist_id.clone();
+    info!("playlist query start {id}");
+    let count = ctx
+        .database
+        .push_record(&query.playlist_id)
+        .await
+        .inspect_err(|e| error!("{e}"))?;
+    let items = if count > 1 {
+        let items = Arc::new(ctx.database.get_items(&query.playlist_id).await?);
+        items
+    } else {
+        let items = Arc::new(ctx.youtube.get_items(&query.playlist_id).await?);
+        let db_items = Arc::clone(&items);
+        tokio::spawn(async move {
+            match ctx.database.push_items(&query.playlist_id, &db_items).await {
+                Ok(()) => info!("db item store succeded"),
+                Err(e) => error!("db error store failed: {e}"),
+            };
+        });
+        items
+    };
+    info!("playlist query end {id}");
+    Ok(Json(PlaylistResponse { items }))
 }

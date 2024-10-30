@@ -1,15 +1,12 @@
-use libsql::Database;
-use shuttle_service::SecretStore;
+use std::str::FromStr;
 
-pub mod turso;
+use ranyou_core::errors::ResponseError::{self};
+use ranyou_core::Config;
+use shuttle_service::SecretStore;
 
 #[shuttle_runtime::main]
 async fn main(
-    #[turso::Turso(
-        addr = "libsql://ranyou-playlist-meta-4lineclear.turso.io",
-        token = "{secrets.TURSO_API_KEY}"
-    )]
-    _client: Database,
+    #[shuttle_shared_db::Postgres(local_uri = "{secrets.LOCAL_DB_URL}")] conn_str: String,
     #[shuttle_runtime::Secrets] secrets: SecretStore,
 ) -> shuttle_axum::ShuttleAxum {
     Ok(ranyou_core::router(
@@ -17,8 +14,16 @@ async fn main(
             &secrets
                 .get("YOUTUBE_API_KEY")
                 .expect("couldn't find youtube api key"),
+            Config::from_str(&conn_str)
+                .map_err(ResponseError::from)
+                .map_err(map_err)?,
         )
-        .await,
+        .await
+        .map_err(map_err)?,
     )
     .into())
+}
+
+fn map_err(e: ResponseError) -> shuttle_service::Error {
+    shuttle_service::Error::Custom(e.into())
 }
