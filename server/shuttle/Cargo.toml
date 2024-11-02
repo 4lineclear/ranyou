@@ -17,4 +17,5 @@ shuttle-shared-db = { version = "0.48", features = ["postgres"] }
 async-trait = "0.1"
 dunce = "1.0"
 serde = { version = "1.0", features = ["derive"] }
+tower-http = { version = "0.6.0", features = ["fs"] }
 url = { version = "2.5", features = ["serde"] }

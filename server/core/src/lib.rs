@@ -46,6 +46,7 @@ impl Context {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 struct PlaylistQuery {
     playlist_id: String,
 }
@@ -57,7 +58,6 @@ struct PlaylistResponse {
 
 pub fn router(ctx: Context) -> Router {
     Router::new()
-        .route("/", get(|| async { Html("hello, world!") }))
         .route("/api/", get(get_playlist))
         .with_state(ctx)
 }

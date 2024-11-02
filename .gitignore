@@ -178,3 +178,7 @@ dist
 
 .shuttle*
 Secrets*.toml
+
+# vite
+
+/build

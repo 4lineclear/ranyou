@@ -1,0 +1,153 @@
+@use "../main.scss" as *;
+
+// 4320p (8k): 7680x4320
+// 2160p (4K): 3840x2160
+// 1440p (2k): 2560x1440
+// 1080p (HD): 1920x1080
+// 720p (HD): 1280x720
+// 480p (SD): 854x480
+// 360p (SD): 640x360
+// 240p (SD): 426x240
+// 144p (SD): 256x144
+
+/* $player-holder-sizes: ( */
+/*   xs: 144px, */
+/*   sm: 240px, */
+/*   md: 360px, */
+/*   lg: 480px, */
+/*   xl: 720px, */
+/*   xxl: 1080px, */
+/* ); */
+
+#play-page {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+#title {
+  border-bottom: solid 2px;
+  width: 100%;
+}
+
+#title h2 {
+  text-align: center;
+}
+
+.loading {
+  display: none !important;
+}
+
+#player-main {
+  display: flex;
+  flex-direction: row;
+  flex-basis: auto;
+  justify-content: center;
+  width: inherit;
+}
+
+.outer-column {
+  text-align: center;
+  position: sticky;
+  width: 20%;
+  height: 100%;
+
+  @include size(lg) {
+    width: 25%;
+  }
+  @include size(sm) {
+    width: 30%;
+  }
+}
+
+.fixed {
+  position: fixed;
+  top: 0;
+  height: 100%;
+}
+
+// NOTE: padding may mess with the % offsets used for left/right & width
+
+#middle-column { 
+  position: relative;
+  border: 2px solid;
+  border-top: none;
+  width: 60%;
+
+  @include size(lg) {
+    width: 50%;
+   }
+
+  @include size(sm) {
+    width: 40%;
+  }
+}
+
+#left-column { 
+  left: 0;
+  float: left;
+}
+
+#right-column { 
+  right: 0px;
+  float: right;
+}
+
+
+#player-holder {
+  /* display: flex; */
+  /* justify-content: center; */
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 */
+}
+
+#player-holder iframe {
+  position: absolute;
+}
+
+
+#next-up-title  {
+  background: $background;
+  border-bottom: solid 2px;
+  position: sticky;
+  display: flex;
+  justify-content: space-between;
+}
+
+#next-up-title h3 {
+  width: inherit;
+  text-align: left;
+  padding-left: 2%;
+}
+
+#next-up-title button {
+  padding-left: 2%;
+  padding-right: 2%;
+}
+
+
+#next-up  {
+  padding-left: 4rem;
+  /* list-style: decimal inside none; */
+}
+
+#scroll-top {
+  width: 45px;
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 10px;
+  position: fixed;
+  right: 1.5%;
+  bottom: 1.5%;
+}
+
+#scroll-top:before {
+  content: "";
+  position: absolute;
+  inset: 30%;
+  transform: translateY(20%) rotate(-45deg);
+  border-top: 5px solid $foreground;
+  border-right: 5px solid $foreground;
+}
