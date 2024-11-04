@@ -7,3 +7,4 @@ package.authors = ["4lineclear"]
 package.license = "MIT"
 
 [workspace.dependencies]
+tower-http = { version = "0.6.0", features = ["fs", "compression-full"] }

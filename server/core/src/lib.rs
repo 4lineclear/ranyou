@@ -9,11 +9,11 @@ use std::{collections::HashSet, sync::Arc};
 
 use axum::{
     extract::{Query, State},
-    response::Html,
     routing::get,
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use tower_http::compression::CompressionLayer;
 use tracing::{error, info};
 
 use self::{database::Database, errors::ResponseResult, model::PlaylistItem, youtube::YouTube};
@@ -57,8 +57,14 @@ struct PlaylistResponse {
 }
 
 pub fn router(ctx: Context) -> Router {
+    let compression: CompressionLayer = CompressionLayer::new()
+        .br(true)
+        .deflate(true)
+        .gzip(true)
+        .zstd(true);
     Router::new()
         .route("/api/", get(get_playlist))
+        .layer(compression)
         .with_state(ctx)
 }
 

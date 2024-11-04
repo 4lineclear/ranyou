@@ -10,10 +10,15 @@ import {
   ol,
   p,
   script,
+  input,
 } from "../lib/common";
 import randomize, { randomString } from "../lib/random";
 import { fetchItems, PlaylistItem } from "../lib/youtube";
 import S from "./play.module.scss";
+
+// TODO: consider adding a mandatory id param to generated dom functions
+
+// TODO: change from /?playlist-id={VAL} to /{VAL}
 
 // TODO: add hide button for iframe
 
@@ -21,8 +26,24 @@ import S from "./play.module.scss";
 
 // TODO: split up server api calls
 
+// TODO: create reactive rendering system
+
 // NOTE: it'd be cool if there was an algorithm to transform one shuffled
 // list to another
+
+// TODO: consider turning this into a proxy
+
+function writeNextUp() {
+  nextUp.replaceChildren(
+    frag(...items.map((item) => li({ textContent: item.title }))),
+  );
+  orderSeed.textContent = `Order Seed: ${seed}`;
+}
+
+function shuffleItems() {
+  items.sort((a, b) => a.position - b.position);
+  randomize(seed, items);
+}
 
 function getSeed() {
   const stored = localStorage.getItem("ranyouOrderSeed");
@@ -32,15 +53,20 @@ function getSeed() {
   return seed;
 }
 
-function setSeed(seed: string) {
-  localStorage.setItem("ranyouOrderSeed", seed);
+function setSeed(newSeed: string) {
+  seed = newSeed;
+  localStorage.setItem("ranyouOrderSeed", newSeed);
 }
 
 let app: HTMLElement;
 
 let seed = getSeed();
-const ytPlayer = div({ id: "yt-player" });
-const nextUp = ol({ id: S.nextUp });
+
+let ytPlayer: HTMLDivElement;
+let ytPlayerHolder: HTMLDivElement;
+let nextUp: HTMLOListElement;
+let customSeedInput: HTMLInputElement;
+let customSeedButton: HTMLButtonElement;
 
 let items: PlaylistItem[] = [];
 let player: YT.Player | null = null;
@@ -48,6 +74,24 @@ let orderSeed = p();
 
 function renderPlayerPage() {
   orderSeed.textContent = `Order Seed: ${seed}`;
+  customSeedInput = input({
+    type: "text",
+    onblur: () => {
+      customSeedInput.replaceWith(customSeedButton);
+      customSeedButton.textContent = "Custom Seed";
+    },
+    listeners: {
+      keyup: {
+        listener: (event) => {
+          if (event.key !== "Enter") return;
+          setSeed(customSeedInput.value);
+          shuffleItems();
+          writeNextUp();
+          customSeedInput.blur();
+        },
+      },
+    },
+  });
   return div({ id: S.playPage }, [
     div({ id: S.title }, [h2({ innerText: "Ran(dom) You(Tube)" })]),
     div({ id: S.playerMain }, [
@@ -58,26 +102,41 @@ function renderPlayerPage() {
           div({}, [
             orderSeed,
             button({
-              // TODO: replace with emoji
               textContent: "Regen Seed",
               onclick: () => {
-                seed = randomString();
-                orderSeed.textContent = `Order Seed: ${seed}`;
-                setSeed(seed);
+                setSeed(randomString());
                 shuffleItems();
+                writeNextUp();
               },
+            }),
+            button({
+              textContent: "Custom Seed",
+              onclick: () => {
+                customSeedButton.textContent = null;
+                customSeedButton.replaceWith(customSeedInput);
+                customSeedInput.focus();
+              },
+              bind: (n) => (customSeedButton = n),
             }),
           ]),
           br(),
         ]),
       ]),
       div({ id: S.middleColumn }, [
-        div({ id: S.playerHolder }, [ytPlayer]),
+        div(
+          {
+            id: S.playerHolder,
+            className: S.hidden,
+            bind: (n) => (ytPlayerHolder = n),
+          },
+          [div({ id: "yt-player", bind: (n) => (ytPlayer = n) })],
+        ),
         div({}, [
           div({ id: S.nextUpTitle }, [h3({ textContent: "Next up" })]),
-          nextUp,
+          ol({ id: S.nextUp, bind: (n) => (nextUp = n) }),
         ]),
       ]),
+      // TODO: change to "view"
       div({ id: S.rightColumn, className: `${S.outerColumn}` }, [
         h3({ textContent: "list stats" }),
         hr(),
@@ -85,25 +144,30 @@ function renderPlayerPage() {
     ]),
     button({
       id: S.scrollTop,
+      className: S.hidden,
       onclick: () => window.scrollTo({ top: 0, behavior: "smooth" }),
     }),
   ]);
 }
 
 function onPlayerReady() {
-  const piFrag = frag(...items.map((item) => li({ textContent: item.title })));
-  player!.getIframe().hidden = false;
-  document.querySelector("#app")!.classList.remove(S.loading);
-  nextUp.replaceChildren(piFrag);
+  if (!player) return;
+  player.cuePlaylist([...items.slice(0, 50).map((item) => item.video_id)]);
+  ytPlayerHolder.classList.remove(S.hidden);
+  // player.playVideo();
+}
 
+function setupScroll() {
   const [left, right] = app.querySelectorAll<HTMLDivElement>(
     `.${S.outerColumn}`,
   );
-  const nextUpTitle = app.querySelector<HTMLDivElement>(`#${S.nextUpTitle}`)!;
+  const nextUpTitle = app.querySelector<HTMLButtonElement>(
+    `#${S.nextUpTitle}`,
+  )!;
+  const scrollTop = app.querySelector<HTMLDivElement>(`#${S.scrollTop}`)!;
 
   const leftTop = left.offsetTop;
   const nextTop = nextUpTitle.offsetTop;
-
   window.onscroll = () => {
     [
       { i: nextTop, e: [nextUpTitle] },
@@ -115,7 +179,31 @@ function onPlayerReady() {
         d.e.forEach((node) => node.classList.remove(S.fixed));
       }
     });
+    if (window.scrollY == 0) {
+      scrollTop.classList.add(S.hidden);
+    } else {
+      scrollTop.classList.remove(S.hidden);
+    }
   };
+}
+
+function onStateChange(event: YT.OnStateChangeEvent) {
+  switch (event.data) {
+    case YT.PlayerState.UNSTARTED:
+      break;
+    case YT.PlayerState.ENDED:
+      break;
+    case YT.PlayerState.PLAYING:
+      break;
+    case YT.PlayerState.PAUSED:
+      break;
+    case YT.PlayerState.BUFFERING:
+      break;
+    case YT.PlayerState.CUED:
+      break;
+    default:
+      break;
+  }
 }
 
 function load() {
@@ -128,9 +216,9 @@ function load() {
       height: "100%",
       events: {
         onReady: onPlayerReady,
+        onStateChange: onStateChange,
       },
     });
-    player.getIframe().hidden = true;
   }
 }
 
@@ -152,18 +240,18 @@ export default async function runPlayer(
   newApp: HTMLDivElement,
   playlistId: string,
 ) {
+  document.querySelector<HTMLMetaElement>(
+    'meta[name="description"]',
+  )!.content += ` playing ${playlistId}`;
   app = newApp;
-  app.classList.add(S.loading);
+  // TODO: run in parallel using Promise.all
   const fetched = await fetchItems(playlistId);
   items = fetched.items;
   shuffleItems();
   setupPlayer();
   app.replaceChildren(renderPlayerPage());
-}
-
-function shuffleItems() {
-  items.sort((a, b) => a.position - b.position);
-  randomize(seed, items);
+  setupScroll();
+  writeNextUp();
 }
 
 // dexie
