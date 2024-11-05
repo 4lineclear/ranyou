@@ -1,4 +1,6 @@
-import { HttpProxy, UserConfig, defineConfig, loadEnv } from "vite";
+import react from "@vitejs/plugin-react";
+
+import { HttpProxy, UserConfig, defineConfig } from "vite";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => {
@@ -11,7 +13,7 @@ export default defineConfig(({ command }) => {
 
 function build(): UserConfig {
   return {
-    plugins: [],
+    plugins: [react()],
     esbuild: {
       drop: ["console"],
     },
@@ -29,7 +31,7 @@ function build(): UserConfig {
 
 function serve(): UserConfig {
   return {
-    plugins: [],
+    plugins: [react()],
     server: {
       proxy: {
         "/api": {
@@ -73,13 +75,4 @@ function configureProxy(proxy: HttpProxy.Server) {
       req.url,
     );
   });
-}
-
-function getPorts(opts: Record<string, string>) {
-  const server = parseInt(opts.VITE_DEV_SERVER_PORT);
-  const client = parseInt(opts.VITE_DEV_CLIENT_PORT);
-  return {
-    server,
-    client,
-  };
 }

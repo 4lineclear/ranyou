@@ -25,7 +25,9 @@
   /* display: none !important; */
   visibility: hidden;
   opacity: 0;
-  transition: visibility 0s 1s, opacity 1s linear;
+  transition:
+    visibility 0s 1s,
+    opacity 1s linear;
 }
 
 #player-main {
@@ -36,7 +38,8 @@
   width: inherit;
 }
 
-.outer-column {
+#left-column,
+#right-column {
   text-align: center;
   position: sticky;
   width: 20%;
@@ -58,7 +61,7 @@
 
 // NOTE: padding may mess with the % offsets used for left/right & width
 
-#middle-column { 
+#middle-column {
   position: relative;
   border: 2px solid;
   border-top: none;
@@ -66,23 +69,22 @@
 
   @include size(lg) {
     width: 50%;
-   }
+  }
 
   @include size(sm) {
     width: 40%;
   }
 }
 
-#left-column { 
+#left-column {
   left: 0;
   float: left;
 }
 
-#right-column { 
+#right-column {
   right: 0px;
   float: right;
 }
-
 
 #player-holder {
   /* display: flex; */
@@ -95,8 +97,7 @@
   position: absolute;
 }
 
-
-#next-up-title  {
+#next-up-title {
   background: $background;
   border-bottom: solid 2px;
   position: sticky;
@@ -115,8 +116,7 @@
   padding-right: 2%;
 }
 
-
-#next-up  {
+#next-up {
   padding-left: 4rem;
   /* list-style: decimal inside none; */
 }

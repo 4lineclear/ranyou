@@ -1,4 +1,4 @@
-@use 'sass:map' as map;
+@use "sass:map" as map;
 
 // TODO: create light mode colors
 
@@ -14,16 +14,17 @@ $bh-contrast: #4f4f4f;
 // <uniquifier>: Use a unique and descriptive class name
 // <weight>: Use a value from 200 to 800
 
-@mixin font()  {
+@mixin font() {
   font-family: "Noto Sans", serif;
   font-optical-sizing: auto;
   font-weight: 300;
   font-style: normal;
-  font-variation-settings:
-    "wdth" 100;
+  font-variation-settings: "wdth" 100;
 }
 
-html, body, #app {
+html,
+body,
+#root {
   padding: 0;
   margin: 0;
   color: $foreground;
@@ -32,14 +33,15 @@ html, body, #app {
   @include font;
 }
 
-#app {
+#root {
   /* padding: 2%; */
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-button, hr {
+button,
+hr {
   background: $background;
   color: $foreground;
 }

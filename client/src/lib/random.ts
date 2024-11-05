@@ -15,7 +15,10 @@ function cyrb128(str: string) {
   h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
   h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
   h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
-  (h1 ^= h2 ^ h3 ^ h4), (h2 ^= h1), (h3 ^= h1), (h4 ^= h1);
+  h1 ^= h2 ^ h3 ^ h4;
+  h2 ^= h1;
+  h3 ^= h1;
+  h4 ^= h1;
   return [h1 >>> 0, h2 >>> 0, h3 >>> 0, h4 >>> 0];
 }
 
@@ -25,7 +28,7 @@ function sfc32(a: number, b: number, c: number, d: number) {
     b |= 0;
     c |= 0;
     d |= 0;
-    let t = (((a + b) | 0) + d) | 0;
+    const t = (((a + b) | 0) + d) | 0;
     d = (d + 1) | 0;
     a = b ^ (b >>> 9);
     b = (c + (c << 3)) | 0;
@@ -42,7 +45,7 @@ function shuffle<T>(rng: () => number, array: T[]) {
   // While there remain elements to shuffle...
   while (currentIndex != 0) {
     // Pick a remaining element...
-    let randomIndex = Math.floor(rng() * currentIndex);
+    const randomIndex = Math.floor(rng() * currentIndex);
     currentIndex--;
 
     // And swap it with the current element.
@@ -53,8 +56,8 @@ function shuffle<T>(rng: () => number, array: T[]) {
   }
 }
 
-export default function randomize<T>(seed: string, array: T[]) {
-  const [a, b, c, d] = cyrb128(seed);
+export default function randomize<T>(orderCode: string, array: T[]) {
+  const [a, b, c, d] = cyrb128(orderCode);
   const rng = sfc32(a, b, c, d);
   shuffle(rng, array);
 }
