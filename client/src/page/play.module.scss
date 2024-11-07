@@ -19,6 +19,7 @@
 
 #title h2 {
   text-align: center;
+  font-size: 1.8rem;
 }
 
 .hidden {
@@ -120,6 +121,14 @@
   padding-left: 4rem;
   /* list-style: decimal inside none; */
 }
+
+#next-up li {
+  border: solid 2px;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+/* #next-up li {} */
 
 #scroll-top {
   width: 45px;

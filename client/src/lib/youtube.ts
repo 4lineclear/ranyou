@@ -10,11 +10,31 @@ export interface PlaylistItem {
   published_at: Date;
 }
 
-export interface FetchedItems {
-  items: PlaylistItem[];
+export interface PlaylistRecord {
+  playlist_id: string;
+  published_at: Date;
+  channel_id: string;
+  channel_title: string;
+  title: string;
+  description: string;
+  privacy_status: string;
+  thumbnail?: string;
+  playlist_length: number;
 }
 
-export const fetchItems = async (playlistId: string): Promise<FetchedItems> => {
-  const res = await fetch("/api/?playlist-id=" + playlistId);
+export const fetchRecords = async (
+  playlistId: string,
+): Promise<PlaylistRecord | number> => {
+  const res = await fetch("/api/playlist-record/" + playlistId);
+  if (res.status === 200) {
+    return await res.json();
+  }
+  return res.status;
+};
+
+export const fetchItems = async (
+  playlistId: string,
+): Promise<PlaylistItem[]> => {
+  const res = await fetch("/api/playlist-items/" + playlistId);
   return await res.json();
 };

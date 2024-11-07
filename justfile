@@ -11,6 +11,7 @@ npm *ARGS:
 tsc *ARGS:
   cd client && tsc {{ARGS}}
 
+clippy *ARGS: (cargo "clippy" ARGS)
 check *ARGS: (cargo "check" ARGS)
 build *ARGS: (cargo "build" ARGS)
 cargo *ARGS:

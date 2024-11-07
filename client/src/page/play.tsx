@@ -1,6 +1,4 @@
-// import randomize, { randomString } from "../lib/random";
-// import { fetchItems, PlaylistItem } from "../lib/youtube";
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useState } from "react";
 import S from "./play.module.scss";
 import randomize, { randomString } from "../lib/random";
 import ReactPlayer from "react-player";
@@ -23,6 +21,8 @@ import { fetchItems, PlaylistItem } from "../lib/youtube";
 
 // TODO: consider turning this into a proxy
 
+// TODO: consider creating wrapper for react-player called playlist-player
+
 function storedOrderCode() {
   const stored = localStorage.getItem("ranyouOrderCode");
   if (stored) return stored;
@@ -31,22 +31,15 @@ function storedOrderCode() {
   return orderCode;
 }
 
-// class ItemStore {
-//   orderCode = storedOrderCode();
-//   items: PlaylistItem[] = []
-//   constructor() {
-//   }
-// }
-
 export default function PlayPage({ playlistId }: { playlistId: string }) {
   const [itemIndex, setItemIndex] = useState(0);
   const [orderCode, setOrderCode] = useState(storedOrderCode());
+  const [offset, setOffset] = useState(0);
   const [items, setItems] = useState<PlaylistItem[]>([]);
 
   const shuffle = (code: string) => {
     items.sort((a, b) => a.position - b.position);
     randomize(code, items);
-    console.log("yeah!" + code);
   };
 
   useEffect(() => { }, [items]);
@@ -66,8 +59,13 @@ export default function PlayPage({ playlistId }: { playlistId: string }) {
       .catch(console.log);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  let playerHolder;
+  useEffect(() => {
+    const onScroll = () => setOffset(window.scrollY);
+    // clean up code
+    window.removeEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <div id={S.playPage}>
@@ -75,7 +73,7 @@ export default function PlayPage({ playlistId }: { playlistId: string }) {
         <h2>Ran(dom) You(Tube) playing '{playlistId}'</h2>
       </div>
       <div id={S.playerMain}>
-        <div id={S.leftColumn}>
+        <div id={S.leftColumn} className={S.fixed}>
           <h3>edit list</h3>
           <hr />
           <div>
@@ -92,10 +90,10 @@ export default function PlayPage({ playlistId }: { playlistId: string }) {
           </div>
         </div>
         <div id={S.middleColumn}>
-          <div id={S.playerHolder} ref={playerHolder}>
+          <div id={S.playerHolder}>
             {items[itemIndex] ? (
               <ReactPlayer
-                playing={true}
+                // playing={true}
                 controls={true}
                 url={`https://www.youtube.com/watch?v=${items[itemIndex].video_id}`}
                 width="100%"
@@ -105,7 +103,7 @@ export default function PlayPage({ playlistId }: { playlistId: string }) {
             ) : null}
           </div>
           <div>
-            <div id={S.nextUpTitle}>
+            <div id={S.nextUpTitle} className={S.fixed}>
               <h3>Next Up</h3>
             </div>
             <ol id={S.nextUp}>
@@ -115,15 +113,15 @@ export default function PlayPage({ playlistId }: { playlistId: string }) {
             </ol>
           </div>
         </div>
-        <div id={S.rightColumn}>
+        <div id={S.rightColumn} className={S.fixed}>
           <h3>list stats</h3>
           <hr />
         </div>
       </div>
       <button
         id={S.scrollTop}
-        hidden={true}
         onClick={() => window.scrollTo(0, 0)}
+        className={offset !== 0 ? "" : S.hidden}
       ></button>
     </div>
   );
