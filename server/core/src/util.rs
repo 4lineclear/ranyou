@@ -2,14 +2,15 @@ use std::future::Future;
 
 use tokio::task::JoinHandle;
 
+// TODO: consider switching around the param order for cleaner formatting
+
 pub fn spawn_with<F, O, T>(t: T, f: impl FnOnce(O) -> F) -> JoinHandle<F::Output>
 where
     F: Future + Send + 'static,
     F::Output: Send,
     T: CloneableSet<O>,
 {
-    let run = f(t.clone_set());
-    tokio::spawn(async move { run.await })
+    tokio::spawn(f(t.clone_set()))
 }
 
 pub trait CloneableSet<O> {

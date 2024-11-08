@@ -10,14 +10,16 @@
     clippy::style,
     clippy::suspicious,
     clippy::all,
-    // rustdoc::all,
+    rustdoc::all,
+
     future_incompatible,
     rust_2024_compatibility,
     nonstandard_style,
     // warnings
 )]
-#[allow(
-    clippy::single_match_else
+#![allow(
+    clippy::single_match_else,
+    clippy::missing_errors_doc,
 //     clippy::cargo_common_metadata,
 //     clippy::missing_docs_in_private_items,
 //     clippy::blanket_clippy_restriction_lints,
@@ -111,11 +113,12 @@ impl Context {
     async fn load_items(&self, playlist_id: String) -> ResponseResult<Arc<Vec<PlaylistItem>>> {
         let (tx, rx) = watch::channel(Default::default());
         self.loading.insert(playlist_id.clone(), Loading::Items(rx));
-        let items = self.youtube.load_items_aot(&playlist_id).await?;
+        let items = self.youtube.get_items(&playlist_id).await?;
         let items = Arc::new(items);
         self.database.push_items(&playlist_id, &items).await?;
         self.loading.remove(&playlist_id);
         let _ = tx.send(items.clone());
+        info!("{items:#?}");
         Ok(items)
     }
 }
@@ -175,32 +178,3 @@ async fn get_playlist_items(
     ctx.load_record(&playlist_id).await?;
     Ok(Json(ctx.load_items(playlist_id.clone()).await?.into()))
 }
-
-// async fn get_playlist(
-//     State(ctx): State<Context>,
-//     Query(query): Query<PlaylistQuery>,
-// ) -> axum::response::Result<Json<PlaylistResponse>> {
-//     let id = query.playlist_id.clone();
-//     info!("playlist query start {id}");
-//     let count = ctx
-//         .database
-//         .push_record(&query.playlist_id)
-//         .await
-//         .inspect_err(|e| error!("{e}"))?;
-//     let items = if count > 1 {
-//         let items = Arc::new(ctx.database.get_items(&query.playlist_id).await?);
-//         items
-//     } else {
-//         let items = Arc::new(ctx.youtube.get_items(&query.playlist_id).await?);
-//         let db_items = Arc::clone(&items);
-//         tokio::spawn(async move {
-//             match ctx.database.push_items(&query.playlist_id, &db_items).await {
-//                 Ok(()) => info!("db item store succeded"),
-//                 Err(e) => error!("db error store failed: {e}"),
-//             };
-//         });
-//         items
-//     };
-//     info!("playlist query end {id}");
-//     Ok(Json(PlaylistResponse { items }))
-// }

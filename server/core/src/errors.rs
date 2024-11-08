@@ -26,7 +26,7 @@ impl IntoResponse for ResponseError {
     fn into_response(self) -> axum::response::Response {
         let body = self.to_string();
         let code = match self {
-            ResponseError::InvalidPlaylist(_) => StatusCode::BAD_REQUEST,
+            Self::InvalidPlaylist(_) => StatusCode::BAD_REQUEST,
             _ => {
                 error!("{body}");
                 StatusCode::INTERNAL_SERVER_ERROR

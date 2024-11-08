@@ -1,8 +1,4 @@
-@use "../main.scss" as *;
-
-// TODO: outer columns should be bigger
-
-// TODO: create set of rules for phones
+/* @import "src/const.css"; */
 
 #play-page {
   align-items: center;
@@ -15,15 +11,10 @@
 #title {
   border-bottom: solid 2px;
   width: 100%;
-}
-
-#title h2 {
   text-align: center;
-  font-size: 1.8rem;
 }
 
 .hidden {
-  /* display: none !important; */
   visibility: hidden;
   opacity: 0;
   transition:
@@ -39,28 +30,25 @@
   width: inherit;
 }
 
-#left-column,
-#right-column {
-  text-align: center;
-  position: sticky;
-  width: 20%;
-  height: 100%;
-
-  @include size(lg) {
-    width: 25%;
-  }
-  @include size(sm) {
-    width: 30%;
-  }
-}
-
 .fixed {
   position: fixed;
   top: 0;
   height: 100%;
 }
 
-// NOTE: padding may mess with the % offsets used for left/right & width
+.outer-column {
+  top: 0;
+  height: 100%;
+  text-align: center;
+  position: sticky;
+  width: 20%;
+  @media only screen and (min-width: var(--lg)) {
+    width: 25%;
+  }
+  @media only screen and (min-width: var(--lg)) {
+    width: 30%;
+  }
+}
 
 #middle-column {
   position: relative;
@@ -68,11 +56,10 @@
   border-top: none;
   width: 60%;
 
-  @include size(lg) {
+  @media only screen and (min-width: var(--lg)) {
     width: 50%;
   }
-
-  @include size(sm) {
+  @media only screen and (min-width: var(--lg)) {
     width: 40%;
   }
 }
@@ -99,7 +86,7 @@
 }
 
 #next-up-title {
-  background: $background;
+  background: var(--background);
   border-bottom: solid 2px;
   position: sticky;
   display: flex;
@@ -118,17 +105,9 @@
 }
 
 #next-up {
-  padding-left: 4rem;
-  /* list-style: decimal inside none; */
+  padding-left: 0;
+  list-style: none;
 }
-
-#next-up li {
-  border: solid 2px;
-  border-radius: 10px;
-  padding: 10px;
-}
-
-/* #next-up li {} */
 
 #scroll-top {
   width: 45px;
@@ -145,6 +124,19 @@
   position: absolute;
   inset: 30%;
   transform: translateY(20%) rotate(-45deg);
-  border-top: 5px solid $foreground;
-  border-right: 5px solid $foreground;
+  border-top: 5px solid var(--foreground);
+  border-right: 5px solid var(--foreground);
+}
+
+.playlist-item {
+  margin: 5px;
+  padding: 10px;
+  background: var(--b-contrast);
+  border: none;
+  border-radius: 5px;
+  display: flex;
+  justify-content: space-between;
+}
+.playlist-item:hover {
+  cursor: pointer;
 }

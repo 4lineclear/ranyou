@@ -1,16 +1,13 @@
-import { useEffect, useState } from "react";
-import S from "./play.module.scss";
-import randomize, { randomString } from "../lib/random";
 import ReactPlayer from "react-player";
+import { useParams } from "wouter";
+import { useContext, useEffect, useState } from "react";
+import randomize, { randomString } from "../lib/random";
 import { fetchItems, PlaylistItem } from "../lib/youtube";
+import RecordsContext from "../AppContext";
 
-// TODO: consider adding a mandatory id param to generated dom functions
+// TODO: add video lengths to api
 
-// TODO: change from /?playlist-id={VAL} to /{VAL}
-
-// TODO: add hide button for iframe
-
-// TODO: stop blocking rendering.
+// TODO: add hide button for video player
 
 // TODO: split up server api calls
 
@@ -23,6 +20,8 @@ import { fetchItems, PlaylistItem } from "../lib/youtube";
 
 // TODO: consider creating wrapper for react-player called playlist-player
 
+// TODO: rename class names to kebab case
+
 function storedOrderCode() {
   const stored = localStorage.getItem("ranyouOrderCode");
   if (stored) return stored;
@@ -31,18 +30,34 @@ function storedOrderCode() {
   return orderCode;
 }
 
-export default function PlayPage({ playlistId }: { playlistId: string }) {
+export default function PlayPage() {
+  const params = useParams();
+  const { records } = useContext(RecordsContext);
   const [itemIndex, setItemIndex] = useState(0);
   const [orderCode, setOrderCode] = useState(storedOrderCode());
   const [offset, setOffset] = useState(0);
   const [items, setItems] = useState<PlaylistItem[]>([]);
+  const [record] = useState(records[params[0] ?? ""]);
 
+  const PlaylistItem = ({ i, item }: { i: number; item: PlaylistItem }) => (
+    <li
+      className="playlist-item"
+      key={i}
+      onClick={() => {
+        setItemIndex(i);
+      }}
+    >
+      <span>{item.title}</span>
+      <span>{i + 1}</span>
+      <span>{i + 1}</span>
+    </li>
+  );
   const shuffle = (code: string) => {
     items.sort((a, b) => a.position - b.position);
     randomize(code, items);
   };
 
-  useEffect(() => { }, [items]);
+  useEffect(() => {}, [items]);
   useEffect(() => {
     localStorage.setItem("ranyouOrderCode", orderCode);
     shuffle(orderCode);
@@ -50,11 +65,11 @@ export default function PlayPage({ playlistId }: { playlistId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderCode]);
   useEffect(() => {
-    fetchItems(playlistId)
+    fetchItems(record.playlist_id)
       .then((fetched) => {
-        fetched.items.sort((a, b) => a.position - b.position);
-        randomize(orderCode, fetched.items);
-        setItems(fetched.items);
+        fetched.sort((a, b) => a.position - b.position);
+        randomize(orderCode, fetched);
+        setItems(fetched);
       })
       .catch(console.log);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -68,12 +83,12 @@ export default function PlayPage({ playlistId }: { playlistId: string }) {
   }, []);
 
   return (
-    <div id={S.playPage}>
-      <div id={S.title}>
-        <h2>Ran(dom) You(Tube) playing '{playlistId}'</h2>
+    <div id="play-page">
+      <div id="title">
+        <h2>Ran(dom) You(Tube) playing '{record.title}'</h2>
       </div>
-      <div id={S.playerMain}>
-        <div id={S.leftColumn} className={S.fixed}>
+      <div id="player-main">
+        <div id="left-column" className="outer-column fixed">
           <h3>edit list</h3>
           <hr />
           <div>
@@ -81,6 +96,7 @@ export default function PlayPage({ playlistId }: { playlistId: string }) {
             <button
               onClick={() => {
                 const code = randomString();
+                setItemIndex(0);
                 setOrderCode(code);
                 shuffle(code);
               }}
@@ -89,8 +105,8 @@ export default function PlayPage({ playlistId }: { playlistId: string }) {
             </button>
           </div>
         </div>
-        <div id={S.middleColumn}>
-          <div id={S.playerHolder}>
+        <div id="middle-column">
+          <div id="player-holder">
             {items[itemIndex] ? (
               <ReactPlayer
                 // playing={true}
@@ -103,25 +119,25 @@ export default function PlayPage({ playlistId }: { playlistId: string }) {
             ) : null}
           </div>
           <div>
-            <div id={S.nextUpTitle} className={S.fixed}>
+            <div id="next-up-title" className="fixed">
               <h3>Next Up</h3>
             </div>
-            <ol id={S.nextUp}>
+            <ol id="next-up">
               {items.map((item, i) => (
-                <li key={i}>{item.title}</li>
+                <PlaylistItem key={i} i={i} item={item} />
               ))}
             </ol>
           </div>
         </div>
-        <div id={S.rightColumn} className={S.fixed}>
+        <div id="right-column" className="outer-column fixed">
           <h3>list stats</h3>
           <hr />
         </div>
       </div>
       <button
-        id={S.scrollTop}
+        id="scroll-top"
         onClick={() => window.scrollTo(0, 0)}
-        className={offset !== 0 ? "" : S.hidden}
+        className={offset !== 0 ? "" : "hidden"}
       ></button>
     </div>
   );

@@ -48,6 +48,7 @@ pub struct PlaylistItem {
     pub position: i32,
     pub channel_title: String,
     pub channel_id: String,
+    pub duration: i64,
     pub added_at: DateTime<Utc>,
     pub published_at: DateTime<Utc>,
 }
@@ -65,8 +66,9 @@ impl TryFrom<Row> for PlaylistItem {
             position: row.try_get(5)?,
             channel_title: row.try_get(6)?,
             channel_id: row.try_get(7)?,
-            added_at: row.try_get(8)?,
-            published_at: row.try_get(9)?,
+            duration: row.try_get(8)?,
+            added_at: row.try_get(9)?,
+            published_at: row.try_get(10)?,
         })
     }
 }

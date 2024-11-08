@@ -95,10 +95,11 @@ impl Database {
                 &item.position,
                 &item.channel_title,
                 &item.channel_id,
+                &item.duration,
                 &item.added_at,
                 &item.published_at,
             ];
-            tx.execute(&statement, &params).await?;
+            tx.execute(&statement, params).await?;
         }
         tx.commit().await?;
         Ok(())
@@ -108,7 +109,7 @@ impl Database {
             .query(SELECT_ITEMS, &[&playlist_id])
             .await?
             .into_iter()
-            .flat_map(|r| {
+            .filter_map(|r| {
                 PlaylistItem::try_from(r)
                     .inspect_err(|e| error!("malformed db playlist item: {e}"))
                     .ok()
@@ -119,6 +120,7 @@ impl Database {
     async fn execute(&self, sql: &str, params: Params<'_>) -> ResponseResult<u64> {
         Ok(self.conn().await?.execute(sql, params).await?)
     }
+    #[allow(unused)]
     async fn query_one(&self, sql: &str, params: Params<'_>) -> ResponseResult<Row> {
         Ok(self.conn().await?.query_one(sql, params).await?)
     }

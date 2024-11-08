@@ -1,65 +1,111 @@
-import { FormEvent, useState } from "react";
-// import { useLocation } from "wouter";
+import { FormEvent, useContext, useState } from "react";
 import { fetchRecords, PlaylistRecord } from "../lib/youtube";
-import S from "./menu.module.scss";
+import { useLocation } from "wouter";
+import RecordsContext from "../AppContext";
 
 // TODO: move to bootstrap
 
-function readLocalRecords(): PlaylistRecord[] {
-  return JSON.parse(localStorage.getItem("ranyouRecords") ?? "[]")
+enum Message {
+  PlaylistNotFound,
+  InternalServerError,
+  PlaylistAlreadyAdded,
+  NoMessage,
 }
-function writeLocalRecords(records: PlaylistRecord[]) { }
 
-// const [, setLocation] = useLocation();
-// setLocation(`/${playlistId}`);
+function MessageComponent({ message }: { message: Message }) {
+  let inner;
+  switch (message) {
+    case Message.PlaylistNotFound:
+      inner = "Playlist Not Found";
+      break;
+    case Message.InternalServerError:
+      inner = "Internal Server Error";
+      break;
+    case Message.PlaylistAlreadyAdded:
+      inner = "Playlist Already Added";
+      break;
+    case Message.NoMessage:
+    default:
+      inner = null;
+  }
+  return inner ? <p>{inner}</p> : null;
+}
+
+function RecordItem({ i, pr }: { i: number; pr: PlaylistRecord }) {
+  const [, setLocation] = useLocation();
+  const onClick = (ev: React.MouseEvent) => {
+    setLocation(`/${pr.playlist_id}`);
+    console.log(ev);
+  };
+  // pr.playlist_id,
+  // pr.published_at.toString(),
+  // pr.channel_id,
+  // pr.channel_title,
+  // pr.title,
+  // pr.description,
+  // pr.privacy_status,
+  // pr.thumbnail,
+  // pr.playlist_length,
+  const published_at = pr.published_at.toDateString();
+  return (
+    <li key={i} className="record-item" onClick={onClick}>
+      <span className="record-title">{pr.title} </span>
+      <span className="record-length">{pr.playlist_length} </span>
+      <span className="record-published-at">{published_at} </span>
+      <span className="record-channel-title">{pr.channel_title} </span>
+      <span className="record-status">{pr.privacy_status}</span>
+    </li>
+  );
+}
 
 export default function MenuPage() {
   const [playlistId, setPlaylistId] = useState("");
-  const [showError, setShowError] = useState(false);
-  const [records, setRecords] = useState(readLocalRecords());
+  const [message, setMessage] = useState(Message.NoMessage);
+  const { records, addRecord } = useContext(RecordsContext);
 
-  const handleRecord = (record: PlaylistRecord | number) => {
-    if (typeof record === "number") {
-      if (record === 400) setShowError(true);
-      return;
-    }
-    setShowError(false);
-  };
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    fetchRecords(playlistId).then(handleRecord).catch(console.log);
+    fetchRecords(playlistId)
+      .then((record: PlaylistRecord | number) => {
+        if (typeof record === "number") {
+          if (record === 400) setMessage(Message.PlaylistNotFound);
+          if (record === 500) setMessage(Message.InternalServerError);
+          return;
+        }
+        setMessage(Message.NoMessage);
+        if (records[record.playlist_id]) {
+          setMessage(Message.PlaylistAlreadyAdded);
+          return;
+        }
+        addRecord(record);
+      })
+      .catch(console.log);
   };
   return (
-    <div id={S.menuPage}>
-      <div id={S.title}>
+    <div className="mate-regular">
+      <div>
         <h1>Ran(dom) You(Tube)</h1>
       </div>
-      <div id={S.formHolder}>
-        <form id={S.form} action="/" onSubmit={handleSubmit}>
-          <label id={S.inputLabel} htmlFor="playlist-id">
-            Playlist ID:
-          </label>
+      <div>
+        <form action="/" onSubmit={handleSubmit}>
+          <label htmlFor="playlist-id">Playlist ID:</label>
           <input
-            id={S.input}
             type="text"
             name="playlist-id"
             value={playlistId}
             onChange={(e) => setPlaylistId(e.target.value)}
             required
           />
-          {showError ? (
-            <div id={S.invalidPlaylistId}>
-              <p>Playlist Not Found</p>
-            </div>
-          ) : null}
-          <input
-            id={S.submit}
-            type="submit"
-            value="Save"
-          />
+          <MessageComponent message={message} />
+          <input type="submit" value="Save" />
         </form>
       </div>
-      <div id={S.recordsHolder}>
+      <div>
+        <ol>
+          {Object.values(records).map((pr, i) => (
+            <RecordItem key={i} i={i} pr={pr} />
+          ))}
+        </ol>
       </div>
     </div>
   );

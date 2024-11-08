@@ -1,0 +1,30 @@
+/* TODO: create common css file */
+:root {
+  --foreground: #1f1f1f;
+  --background: #e8e8e8;
+
+  --f-contrast: #3f3f3f;
+  --b-contrast: #d8d8d8;
+
+  --fh-contrast: #4f4f4f;
+  --bh-contrast: #f8f8f8;
+  --xs: 0px;
+  --sm: 576px;
+  --md: 768px;
+  --lg: 992px;
+  --xl: 1200px;
+  --xxl: 1400px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground: #e8e8e8;
+    --background: #1f1f1f;
+
+    --f-contrast: #d8d8d8;
+    --b-contrast: #3f3f3f;
+
+    --fh-contrast: #f8f8f8;
+    --bh-contrast: #4f4f4f;
+  }
+}
