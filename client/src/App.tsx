@@ -23,13 +23,13 @@ const App = () => {
   return (
     <>
       <Provider>
-        <Switch>
-          <RecordsContext.Provider value={recordProvider}>
+        <RecordsContext.Provider value={recordProvider}>
+          <Switch>
             <Route path="/">
               <MenuPage></MenuPage>
             </Route>
-          </RecordsContext.Provider>
-        </Switch>
+          </Switch>
+        </RecordsContext.Provider>
       </Provider>
     </>
   );

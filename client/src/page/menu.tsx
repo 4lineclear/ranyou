@@ -11,13 +11,15 @@ import {
   Mark,
   Image,
 } from "@chakra-ui/react";
-import { Button } from "../components/ui/button";
 import { useContext, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { CheckboxCard } from "@/components/ui/checkbox-card";
+import { Field } from "@/components/ui/field";
 
 import RecordsContext from "@/AppContext";
 import { fetchRecords, PlaylistRecord } from "@/lib/youtube";
-import { Field } from "@/components/ui/field";
+
+const numLen = (num: number) => Math.ceil(Math.log10(num + 1));
 
 const RecordComponent = ({ pr }: { pr: PlaylistRecord }) => {
   return (
@@ -49,7 +51,7 @@ const RecordComponent = ({ pr }: { pr: PlaylistRecord }) => {
         md={{ width: "75%" }}
         lg={{ width: "50%" }}
       />
-      <Float placement="top-start" offsetX="1vw">
+      <Float placement="top-start" offsetX={numLen(pr.playlist_length)}>
         <Mark variant="solid" rounded="md">
           {pr.playlist_length}
         </Mark>
@@ -60,6 +62,7 @@ const RecordComponent = ({ pr }: { pr: PlaylistRecord }) => {
 
 const MenuPage = () => {
   const [playlistId, setPlaylistId] = useState("");
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const { records, addRecord } = useContext(RecordsContext);
 
@@ -69,6 +72,7 @@ const MenuPage = () => {
       setMessage("Playlist Already Added");
       return;
     }
+    setLoading(true);
     fetchRecords(playlistId)
       .then((record) => {
         if (record instanceof Response) {
@@ -82,6 +86,9 @@ const MenuPage = () => {
       })
       .catch((e) => {
         console.log(e);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
@@ -92,7 +99,7 @@ const MenuPage = () => {
           Ran(dom) You(Tube)
         </Heading>
         <Stack direction="row" w="98vw" sm={{ w: "3/4" }} md={{ w: "1/2" }}>
-          <Field invalid={message !== ""} errorText={message}>
+          <Field required invalid={message !== ""} errorText={message}>
             <Input
               size="lg"
               placeholder="playlist-id"
@@ -101,7 +108,7 @@ const MenuPage = () => {
               required
             />
           </Field>
-          <Button size="lg" onClick={handleSubmit}>
+          <Button size="lg" onClick={handleSubmit} loading={loading}>
             Add
           </Button>
         </Stack>

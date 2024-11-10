@@ -28,7 +28,7 @@ function build(): UserConfig {
       },
     },
     build: {
-      outDir: "../build/",
+      outDir: "../server/build/",
     },
   };
 }

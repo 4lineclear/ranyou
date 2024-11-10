@@ -3,12 +3,14 @@
   "private": true,
   "workspaces": [
     "client",
-    "server"
+    "server",
+    "shared"
   ],
   "scripts": {
     "format": "prettier --write ."
   },
   "devDependencies": {
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "ranyou-shared": "workspace:shared"
   }
 }
