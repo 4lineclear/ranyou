@@ -1,5 +1,6 @@
 import react from "@vitejs/plugin-react";
 import cssAutoImport from "vite-plugin-css-auto-import";
+import tsconfigPaths from "vite-tsconfig-paths";
 
 import { HttpProxy, UserConfig, defineConfig } from "vite";
 
@@ -12,9 +13,11 @@ export default defineConfig(({ command }) => {
   }
 });
 
+const plugins = () => [react(), cssAutoImport(), tsconfigPaths()];
+
 function build(): UserConfig {
   return {
-    plugins: [react(), cssAutoImport()],
+    plugins: plugins(),
     esbuild: {
       drop: ["console"],
     },
@@ -32,7 +35,7 @@ function build(): UserConfig {
 
 function serve(): UserConfig {
   return {
-    plugins: [react(), cssAutoImport()],
+    plugins: plugins(),
     server: {
       proxy: {
         "/api": {

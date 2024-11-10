@@ -1,112 +1,121 @@
-import { FormEvent, useContext, useState } from "react";
-import { fetchRecords, PlaylistRecord } from "../lib/youtube";
-import { useLocation } from "wouter";
-import RecordsContext from "../AppContext";
+import {
+  Badge,
+  Center,
+  Float,
+  Heading,
+  HStack,
+  Input,
+  Stack,
+  Text,
+  VStack,
+  Mark,
+  Image,
+} from "@chakra-ui/react";
+import { Button } from "../components/ui/button";
+import { useContext, useState } from "react";
+import { CheckboxCard } from "@/components/ui/checkbox-card";
 
-// TODO: move to bootstrap
+import RecordsContext from "@/AppContext";
+import { fetchRecords, PlaylistRecord } from "@/lib/youtube";
+import { Field } from "@/components/ui/field";
 
-enum Message {
-  PlaylistNotFound,
-  InternalServerError,
-  PlaylistAlreadyAdded,
-  NoMessage,
-}
-
-function MessageComponent({ message }: { message: Message }) {
-  let inner;
-  switch (message) {
-    case Message.PlaylistNotFound:
-      inner = "Playlist Not Found";
-      break;
-    case Message.InternalServerError:
-      inner = "Internal Server Error";
-      break;
-    case Message.PlaylistAlreadyAdded:
-      inner = "Playlist Already Added";
-      break;
-    case Message.NoMessage:
-    default:
-      inner = null;
-  }
-  return inner ? <p>{inner}</p> : null;
-}
-
-function RecordItem({ i, pr }: { i: number; pr: PlaylistRecord }) {
-  const [, setLocation] = useLocation();
-  const onClick = (ev: React.MouseEvent) => {
-    setLocation(`/${pr.playlist_id}`);
-    console.log(ev);
-  };
-  // pr.playlist_id,
-  // pr.published_at.toString(),
-  // pr.channel_id,
-  // pr.channel_title,
-  // pr.title,
-  // pr.description,
-  // pr.privacy_status,
-  // pr.thumbnail,
-  // pr.playlist_length,
-  const published_at = pr.published_at.toDateString();
+const RecordComponent = ({ pr }: { pr: PlaylistRecord }) => {
   return (
-    <li key={i} className="record-item" onClick={onClick}>
-      <span className="record-title">{pr.title} </span>
-      <span className="record-length">{pr.playlist_length} </span>
-      <span className="record-published-at">{published_at} </span>
-      <span className="record-channel-title">{pr.channel_title} </span>
-      <span className="record-status">{pr.privacy_status}</span>
-    </li>
+    <Center
+      position="relative"
+      width="100%"
+      md={{ width: "3/4" }}
+      lg={{ width: "1/2" }}
+    >
+      <CheckboxCard
+        image={
+          <Image
+            src={pr.thumbnail}
+            my="-16px"
+            ml="-16px"
+            height="inherit"
+            width="auto"
+          />
+        }
+        label={pr.title}
+        description={pr.channel_title}
+        width="100%"
+        addon={
+          <HStack>
+            <Badge variant="solid">{pr.privacy_status}</Badge>
+            <Text>{pr.published_at.toDateString()}</Text>
+          </HStack>
+        }
+        md={{ width: "75%" }}
+        lg={{ width: "50%" }}
+      />
+      <Float placement="top-start" offsetX="1vw">
+        <Mark variant="solid" rounded="md">
+          {pr.playlist_length}
+        </Mark>
+      </Float>
+    </Center>
   );
-}
+};
 
-export default function MenuPage() {
+const MenuPage = () => {
   const [playlistId, setPlaylistId] = useState("");
-  const [message, setMessage] = useState(Message.NoMessage);
+  const [message, setMessage] = useState("");
   const { records, addRecord } = useContext(RecordsContext);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e: React.MouseEvent) => {
     e.preventDefault();
+    if (records[playlistId]) {
+      setMessage("Playlist Already Added");
+      return;
+    }
     fetchRecords(playlistId)
-      .then((record: PlaylistRecord | number) => {
-        if (typeof record === "number") {
-          if (record === 400) setMessage(Message.PlaylistNotFound);
-          if (record === 500) setMessage(Message.InternalServerError);
+      .then((record) => {
+        if (record instanceof Response) {
+          const status = record.status;
+          if (status === 400) setMessage(record.statusText);
+          if (status === 500) setMessage(record.statusText);
           return;
         }
-        setMessage(Message.NoMessage);
-        if (records[record.playlist_id]) {
-          setMessage(Message.PlaylistAlreadyAdded);
-          return;
-        }
+        setMessage("");
         addRecord(record);
       })
-      .catch(console.log);
+      .catch((e) => {
+        console.log(e);
+      });
   };
+
   return (
-    <div className="mate-regular">
-      <div>
-        <h1>Ran(dom) You(Tube)</h1>
-      </div>
-      <div>
-        <form action="/" onSubmit={handleSubmit}>
-          <label htmlFor="playlist-id">Playlist ID:</label>
-          <input
-            type="text"
-            name="playlist-id"
-            value={playlistId}
-            onChange={(e) => setPlaylistId(e.target.value)}
-            required
-          />
-          <MessageComponent message={message} />
-          <input type="submit" value="Save" />
-        </form>
-      </div>
-      <div>
-        <ol>
-          {Object.values(records).map((pr, i) => (
-            <RecordItem key={i} i={i} pr={pr} />
-          ))}
-        </ol>
-      </div>
-    </div>
+    <>
+      <VStack>
+        <Heading textStyle="6xl" textAlign="center" my="8vh">
+          Ran(dom) You(Tube)
+        </Heading>
+        <Stack direction="row" w="98vw" sm={{ w: "3/4" }} md={{ w: "1/2" }}>
+          <Field invalid={message !== ""} errorText={message}>
+            <Input
+              size="lg"
+              placeholder="playlist-id"
+              value={playlistId}
+              onChange={(e) => setPlaylistId(e.target.value)}
+              required
+            />
+          </Field>
+          <Button size="lg" onClick={handleSubmit}>
+            Add
+          </Button>
+        </Stack>
+        <Heading textStyle="xl" mt="8vh" mb="4vh">
+          Playlists
+        </Heading>
+      </VStack>
+      <VStack width="96vw" mx="2vw">
+        {Object.values(records).map((pr, i) => (
+          <RecordComponent key={i} pr={pr} />
+        ))}
+      </VStack>
+    </>
   );
-}
+};
+
+export default MenuPage;
