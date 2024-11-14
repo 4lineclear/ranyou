@@ -1,16 +1,25 @@
-import { PlaylistRecord, PlaylistItem } from "ranyou-shared/src/index";
+import {
+  PlaylistRecord,
+  PlaylistItem,
+  isPlaylistRecord,
+} from "ranyou-shared/src/index";
 
 export type { PlaylistItem, PlaylistRecord };
 export type PlaylistRecords = Record<string, PlaylistRecord>;
 
 export const readLocalRecords = () => {
-  const records: Record<string, PlaylistRecord> = JSON.parse(
+  const unfiltered: PlaylistRecords = JSON.parse(
     localStorage.getItem("ranyouRecords") ?? "{}",
   );
-  for (const key in records) {
-    records[key].published_at = new Date(records[key].published_at);
+  const filtered: PlaylistRecords = {};
+  Object.entries(unfiltered)
+    .filter(([, v]) => isPlaylistRecord(v))
+    .forEach(([k, v]) => (filtered[k] = v));
+  for (const key in filtered) {
+    filtered[key].published_at = new Date(filtered[key].published_at);
   }
-  return records;
+  writeLocalRecords(filtered);
+  return filtered;
 };
 
 export const writeLocalRecords = (records: PlaylistRecords) => {

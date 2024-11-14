@@ -1,44 +1,76 @@
-import { env, fetch } from "bun";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { HTTPException } from "hono/http-exception";
-import { logger } from "hono/logger";
-import { getPlaylistRecord } from "./youtube";
-import { PlaylistRecord, PlaylistItem } from "ranyou-shared/src/index";
+import compress from "hono-compress";
+import { ApiPlaylist, getPlaylistItems, getPlaylistRecord } from "./youtube";
+import { item, record } from "./database";
+import { isPlaylistRecord } from "ranyou-shared/src";
+
+type Nullish = null | undefined;
+const isNullish = (target: unknown): target is Nullish => target == null;
+
+const recordResponseBody = (record: ApiPlaylist): any | null => {
+  const res = {
+    playlist_id: record.id,
+    published_at: new Date(record.snippet?.publishedAt ?? ""),
+    channel_id: record.snippet?.channelId,
+    channel_title: record.snippet?.channelTitle,
+    title: record.snippet?.title,
+    description: record.snippet?.description ?? "",
+    privacy_status: record.status?.privacyStatus,
+    thumbnail:
+      record.snippet?.thumbnails?.standard?.url ??
+      record.snippet?.thumbnails?.medium?.url ??
+      "",
+    playlist_length: record.contentDetails?.itemCount ?? undefined,
+  };
+  return Object.values(res).some(isNullish) ? null : res;
+};
 
 const api = new Hono();
 
 api.get("/playlist-record/:playlist-id", async (c) => {
   const playlistId = c.req.param("playlist-id");
+  const dbRecord = await record.select(playlistId);
+  if (dbRecord.length) return c.body(JSON.stringify(dbRecord[0]));
   const recordResponse = await getPlaylistRecord(playlistId);
-
-  if (recordResponse instanceof Response)
+  if (typeof recordResponse == "number")
     throw new HTTPException(500, { message: "Internal Server Error" });
-  if (recordResponse.items.length === 0)
+  if (!recordResponse.items || !recordResponse.items.length)
     throw new HTTPException(400, { message: "Playlist Not Found" });
 
-  const record = recordResponse.items[0];
+  const res = recordResponseBody(recordResponse.items[0]);
+  if (!isPlaylistRecord(res))
+    throw new HTTPException(400, { message: "Playlist Not Found" });
+  await record.insert(res);
 
-  console.log(record.snippet.publishedAt);
+  c.header("Content-Type", "application/json");
+  return c.body(JSON.stringify(res));
+});
 
-  return c.body(
-    JSON.stringify({
-      playlist_id: record.id,
-      published_at: new Date(record.snippet.publishedAt),
-      channel_id: record.snippet.channelId,
-      channel_title: record.snippet.channelTitle,
-      title: record.snippet.title,
-      description: record.snippet.description,
-      thumbnail: (
-        record.snippet.thumbnails.standard ?? record.snippet.thumbnails.medium
-      ).url,
-      privacy_status: record.status.privacyStatus,
-      playlist_length: record.contentDetails.itemCount,
-    } satisfies PlaylistRecord),
-  );
+api.get("/playlist-items/:playlist-id", async (c) => {
+  const playlistId = c.req.param("playlist-id");
+  c.header("Content-Type", "application/json");
+
+  const dbItems = await item.select(playlistId);
+  if (dbItems.length !== 0) {
+    dbItems.forEach((i) => (i.playlist_id = undefined));
+    return c.body(JSON.stringify(dbItems));
+  }
+
+  const items = await getPlaylistItems(playlistId);
+  const body = JSON.stringify(items);
+  const db = items.map((i) => ({ ...i, playlist_id: playlistId }));
+  console.log(db);
+  item.insert(db);
+
+  return c.body(body);
 });
 
 const app = new Hono();
+
+app.use(compress());
+
 app.route("/api", api);
 app.get(
   "/*",
@@ -46,6 +78,9 @@ app.get(
     root: "build",
   }),
 );
+
+record.create().finally(console.info);
+item.create().finally(console.info);
 
 export default {
   port: 8000,

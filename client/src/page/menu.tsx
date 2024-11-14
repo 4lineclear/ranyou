@@ -9,7 +9,6 @@ import {
   Text,
   VStack,
   Mark,
-  Image,
 } from "@chakra-ui/react";
 import { useContext, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,10 +17,28 @@ import { Field } from "@/components/ui/field";
 
 import RecordsContext from "@/AppContext";
 import { fetchRecords, PlaylistRecord } from "@/lib/youtube";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LuPlay, LuTrash2 } from "react-icons/lu";
+import {
+  ActionBarContent,
+  ActionBarRoot,
+  ActionBarSelectionTrigger,
+  ActionBarSeparator,
+} from "@/components/ui/action-bar";
+import { useLocation } from "wouter";
 
 const numLen = (num: number) => Math.ceil(Math.log10(num + 1));
 
-const RecordComponent = ({ pr }: { pr: PlaylistRecord }) => {
+const RecordComponent = ({
+  pr,
+  checked,
+  checkPlaylist,
+}: {
+  pr: PlaylistRecord;
+  checked: boolean;
+  checkPlaylist: (checked: boolean) => void;
+}) => {
+  const [, navigate] = useLocation();
   return (
     <Center
       position="relative"
@@ -30,15 +47,6 @@ const RecordComponent = ({ pr }: { pr: PlaylistRecord }) => {
       lg={{ width: "1/2" }}
     >
       <CheckboxCard
-        image={
-          <Image
-            src={pr.thumbnail}
-            my="-16px"
-            ml="-16px"
-            height="inherit"
-            width="auto"
-          />
-        }
         label={pr.title}
         description={pr.channel_title}
         width="100%"
@@ -46,10 +54,21 @@ const RecordComponent = ({ pr }: { pr: PlaylistRecord }) => {
           <HStack>
             <Badge variant="solid">{pr.privacy_status}</Badge>
             <Text>{pr.published_at.toDateString()}</Text>
+            <Button
+              ms="auto"
+              h="inherit"
+              onClick={() => navigate("/" + pr.playlist_id)}
+            >
+              Play
+            </Button>
           </HStack>
         }
         md={{ width: "75%" }}
         lg={{ width: "50%" }}
+        checked={checked}
+        onCheckedChange={(d) => {
+          if (d.checked !== "indeterminate") checkPlaylist(d.checked);
+        }}
       />
       <Float placement="top-start" offsetX={numLen(pr.playlist_length)}>
         <Mark variant="solid" rounded="md">
@@ -61,10 +80,15 @@ const RecordComponent = ({ pr }: { pr: PlaylistRecord }) => {
 };
 
 const MenuPage = () => {
+  const [, navigate] = useLocation();
+  // const [selectedPlaylists, setSelectedPlaylists] = useState<string[]>([]);
   const [playlistId, setPlaylistId] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const { records, addRecord } = useContext(RecordsContext);
+  const { records, addRecord, removeRecord } = useContext(RecordsContext);
+  const [checkedRecords, setCheckedRecords] = useState<boolean[]>(
+    new Array(Object.entries(records).length).fill(false),
+  );
 
   const handleSubmit = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -77,16 +101,14 @@ const MenuPage = () => {
       .then((record) => {
         if (record instanceof Response) {
           const status = record.status;
-          if (status === 400) setMessage(record.statusText);
-          if (status === 500) setMessage(record.statusText);
+          if (status === 400 || status === 500) setMessage(record.statusText);
           return;
         }
         setMessage("");
         addRecord(record);
+        setCheckedRecords([...checkedRecords, false]);
       })
-      .catch((e) => {
-        console.log(e);
-      })
+      .catch(setMessage)
       .finally(() => {
         setLoading(false);
       });
@@ -116,11 +138,61 @@ const MenuPage = () => {
           Playlists
         </Heading>
       </VStack>
-      <VStack width="96vw" mx="2vw">
-        {Object.values(records).map((pr, i) => (
-          <RecordComponent key={i} pr={pr} />
-        ))}
-      </VStack>
+      {Object.values(records).length ? (
+        <VStack width="96vw" mx="2vw">
+          {Object.values(records).map((pr, i) => (
+            <RecordComponent
+              key={i}
+              pr={pr}
+              checked={checkedRecords[i]}
+              checkPlaylist={(checked) => {
+                checkedRecords[i] = checked;
+                setCheckedRecords(checkedRecords.map((c) => c));
+              }}
+            />
+          ))}
+        </VStack>
+      ) : (
+        <EmptyState
+          title="You haven't added any playlists yet"
+          description="Start by adding playlists above!"
+        />
+      )}
+      <ActionBarRoot
+        open={checkedRecords.some((c) => c)}
+        closeOnInteractOutside={false}
+      >
+        <ActionBarContent>
+          <ActionBarSelectionTrigger>
+            {checkedRecords.filter((c) => c).length} selected
+          </ActionBarSelectionTrigger>
+          <ActionBarSeparator />
+          <Button
+            variant="outline"
+            size="sm"
+            colorPalette="red"
+            onClick={() => {
+              const count = Object.keys(records).length - checkedRecords.length;
+              checkedRecords
+                .map((_, n) => Object.keys(records)[n])
+                .forEach(removeRecord);
+              setCheckedRecords(new Array(count).fill(false));
+            }}
+          >
+            <LuTrash2 />
+            Delete
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            colorPalette="green"
+            onClick={() => navigate("/" + checkedRecords[0])}
+          >
+            <LuPlay />
+            Play
+          </Button>
+        </ActionBarContent>
+      </ActionBarRoot>
     </>
   );
 };

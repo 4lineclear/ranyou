@@ -4,10 +4,12 @@
     "dev": "bun --env-file=process.env run --hot src/index.ts"
   },
   "dependencies": {
-    "hono": "^4.6.9"
+    "@googleapis/youtube": "^20.0.0",
+    "hono": "^4.6.9",
+    "hono-compress": "github:vuolter/hono-compress",
+    "postgres": "^3.4.5"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "@types/gapi.youtube": "^3.0.40"
+    "@types/bun": "latest"
   }
 }
