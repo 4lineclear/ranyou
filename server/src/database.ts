@@ -5,6 +5,11 @@ const sql = postgres(process.env["PG_URL"]!, {
   onnotice: undefined,
 });
 
+export const setIntevalStyle = async () =>
+  await sql`
+set intervalstyle = 'iso_8601';
+`;
+
 export namespace record {
   export const create = async () =>
     await sql`
@@ -69,7 +74,7 @@ create table if not exists playlist_items (
   position integer not null check (position >= 0),
   channel_title text not null,
   channel_id text not null,
-  duration interval not null,
+  duration text not null,
   added_at timestamp with time zone not null,
   published_at timestamp with time zone not null
 );`;

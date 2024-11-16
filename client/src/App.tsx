@@ -8,7 +8,7 @@ import {
 } from "./lib/youtube";
 import MenuPage from "./page/menu";
 import RecordsContext from "./AppContext";
-import { Route, Switch } from "wouter";
+import { Redirect, Route, Switch } from "wouter";
 import NotFound from "./page/not-found";
 import PlayPage from "./page/play";
 
@@ -38,7 +38,19 @@ const App = () => {
               <MenuPage></MenuPage>
             </Route>
             <Route path="/:playlist-id">
-              {(params) => <PlayPage playlistId={params["playlist-id"]} />}
+              {(params) => <Redirect to={"/" + params["playlist-id"] + "/1"} />}
+            </Route>
+            <Route path="/:playlist-id/:index">
+              {(params) =>
+                parseInt(params.index) < 1 ? (
+                  <Redirect to={"/" + params["playlist-id"] + "/1"} />
+                ) : (
+                  <PlayPage
+                    initItemIndex={parseInt(params.index)}
+                    playlistId={params["playlist-id"]}
+                  />
+                )
+              }
             </Route>
             <Route>
               <NotFound></NotFound>

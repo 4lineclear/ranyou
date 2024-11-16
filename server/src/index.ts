@@ -3,7 +3,7 @@ import { serveStatic } from "hono/bun";
 import { HTTPException } from "hono/http-exception";
 import compress from "hono-compress";
 import { ApiPlaylist, getPlaylistItems, getPlaylistRecord } from "./youtube";
-import { item, record } from "./database";
+import { item, record, setIntevalStyle } from "./database";
 import { isPlaylistRecord } from "ranyou-shared/src";
 
 type Nullish = null | undefined;
@@ -79,6 +79,7 @@ app.get(
   }),
 );
 
+setIntevalStyle().finally(console.info);
 record.create().finally(console.info);
 item.create().finally(console.info);
 
