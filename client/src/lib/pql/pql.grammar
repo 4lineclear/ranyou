@@ -1,0 +1,90 @@
+@precedence {
+  cmp_left @left
+}
+@skip {
+  Spaces | NewLine | Comment
+}
+@top pql {
+  Statement*
+}
+Statement {
+  (kw<"let"> Name "=" | kw<"return">)  StatementValue ";"
+}
+StatementValue {
+  Fn | Select | Join | Value
+}
+Fn {
+  kw<"fn"> '(' FnParams? ')' Statement* kw<"end">
+}
+FnParams {
+  Param ("," Param)*
+}
+Param {
+  Name (":" Type)?
+}
+Select {
+  kw<"select">  (NameArray | "*")
+  kw<"from"> (NameArray | "*")
+  (kw<"where"> Predicate)?
+  (kw<"order"> kw<"by"> (NameArray | Fn))?
+}
+Join {
+  "join" NameArray
+}
+NameArray {
+  Name? ("," Name)*
+}
+Predicate {
+  Value 
+    !cmp_left kw<"not">? (kw<"in"> kw<"between"> | kw<"like"> | Cmp)
+  Value
+}
+Value {
+  FnCall | Name | Tuple | String | Number | ConstBool | Predicate
+}
+FnCall {
+  Name '(' Array ')'
+}
+Tuple {
+  '(' Array ')'
+}
+Array {
+  Value? ("," Value)*
+}
+@tokens {
+  Spaces { 
+    $[\u0009 \u000b\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]+
+  }
+  NewLine { 
+    $[\r\n\u2028\u2029]
+  }
+  Comment {
+    "--" ![\n]*
+  }
+  Cmp {
+    "&" | "|"  | "^" | "=="  | "!=" | "<" | ">" | "<=" | ">="
+  }
+  Name {
+    $[a-zA-Z_]+
+  }
+  Type { 
+    Name
+  }
+  String {
+    '"' ![\n"]* '"'
+  }
+  Number {
+    @digit+
+  }
+  ConstBool {
+    "true" | "false"
+  }
+  @precedence {
+    "join", Cmp, ConstBool, Name
+  }
+  "," ";"
+}
+
+kw<term> { @specialize[@name={term}]<Name, term> }
+
+@external propSource highlight from "./pql-highlight"

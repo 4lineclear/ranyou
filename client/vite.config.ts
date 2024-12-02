@@ -14,7 +14,6 @@ export default defineConfig(({ command }) => {
 });
 
 const plugins = () => [react(), cssAutoImport(), tsconfigPaths()];
-
 function build(): UserConfig {
   return {
     plugins: plugins(),

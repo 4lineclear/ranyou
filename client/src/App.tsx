@@ -11,6 +11,7 @@ import RecordsContext from "./AppContext";
 import { Redirect, Route, Switch } from "wouter";
 import NotFound from "./page/not-found";
 import PlayPage from "./page/play";
+import Fior from "./page/fior/fior";
 
 const App = () => {
   const [records, setRecords] = useState(readLocalRecords());
@@ -29,32 +30,33 @@ const App = () => {
       writeLocalRecords(newRecords);
     },
   };
+
+  // TODO: check if play index is integer
   return (
     <>
       <Provider>
         <RecordsContext.Provider value={recordProvider}>
           <Switch>
-            <Route path="/">
-              <MenuPage></MenuPage>
-            </Route>
-            <Route path="/:playlist-id">
-              {(params) => <Redirect to={"/" + params["playlist-id"] + "/1"} />}
-            </Route>
-            <Route path="/:playlist-id/:index">
+            <Route path="/" component={MenuPage} />
+            <Route path="/play/:playlist-id/:index?">
               {(params) =>
-                parseInt(params.index) < 1 ? (
-                  <Redirect to={"/" + params["playlist-id"] + "/1"} />
+                parseInt(params.index ?? "1") < 1 ? (
+                  <Redirect
+                    to={"/play/" + params["playlist-id"] + "/1"}
+                    replace
+                  />
                 ) : (
                   <PlayPage
-                    initItemIndex={parseInt(params.index)}
+                    initItemIndex={parseInt(params.index ?? "1")}
                     playlistId={params["playlist-id"]}
                   />
                 )
               }
             </Route>
-            <Route>
-              <NotFound></NotFound>
+            <Route path="/fior/:path?">
+              {(params) => <Fior path={params["path"] ?? "menu"}></Fior>}
             </Route>
+            <Route component={NotFound} />
           </Switch>
         </RecordsContext.Provider>
       </Provider>

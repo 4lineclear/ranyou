@@ -4,6 +4,8 @@ import { Provider } from "./components/ui/provider.tsx";
 
 import App from "./App.tsx";
 import "./main.css";
+import "../../node_modules/react-grid-layout/css/styles.css";
+import "../../node_modules/react-resizable/css/styles.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

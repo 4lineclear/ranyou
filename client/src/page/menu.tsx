@@ -57,7 +57,7 @@ const RecordComponent = ({
             <Button
               ms="auto"
               h="inherit"
-              onClick={() => navigate("/" + pr.playlist_id)}
+              onClick={() => navigate("/play/" + pr.playlist_id)}
             >
               Play
             </Button>
@@ -186,7 +186,7 @@ const MenuPage = () => {
             variant="outline"
             size="sm"
             colorPalette="green"
-            onClick={() => navigate("/" + checkedRecords[0])}
+            onClick={() => navigate("/play/" + checkedRecords[0])}
           >
             <LuPlay />
             Play

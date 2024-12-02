@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { HTTPException } from "hono/http-exception";
-import compress from "hono-compress";
+import { compress } from "hono-compress";
 import { ApiPlaylist, getPlaylistItems, getPlaylistRecord } from "./youtube";
 import { item, record, setIntevalStyle } from "./database";
 import { isPlaylistRecord } from "ranyou-shared/src";
@@ -72,12 +72,20 @@ const app = new Hono();
 app.use(compress());
 
 app.route("/api", api);
-app.get(
-  "/*",
-  serveStatic({
-    root: "build",
-  }),
-);
+app
+  .use(
+    "*",
+    serveStatic({
+      root: "build",
+    }),
+  )
+  .use(
+    "*",
+    serveStatic({
+      path: "index.html",
+      root: "build",
+    }),
+  );
 
 setIntevalStyle().finally(console.info);
 record.create().finally(console.info);

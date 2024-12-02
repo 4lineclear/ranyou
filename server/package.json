@@ -6,7 +6,7 @@
   "dependencies": {
     "@googleapis/youtube": "^20.0.0",
     "hono": "^4.6.9",
-    "hono-compress": "github:vuolter/hono-compress",
+    "hono-compress": "^0.6.0",
     "postgres": "^3.4.5"
   },
   "devDependencies": {
