@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 
 import pql from "@/lib/pql";
-import CodeMirror, { Compartment, EditorView } from "@uiw/react-codemirror";
+import CodeMirror, {
+  Compartment,
+  EditorView,
+} from "@uiw/react-codemirror";
 import { vim } from "@replit/codemirror-vim";
 
 import { Box, Flex } from "@chakra-ui/react";
@@ -11,17 +14,12 @@ import pqlLinter from "@/lib/lint";
 import pqlCompletion from "@/lib/autocomplete";
 
 const testVal = `\
-let vids = fn(list: PlayList, max: Number)
-  let nested = fn()
-    return select *
-      from list
-      where duration < max;
-  end;
-  return nested();
-end;
-
-return vids(music, 180000);`;
-
+select *
+  from list
+  where duration < 180000
+select duration
+  from *
+  where duration > 180000`;
 
 const vimComp = new Compartment();
 const ext = [vimComp.of(vim()), pql(), pqlLinter, pqlCompletion];
@@ -36,12 +34,6 @@ const Raw = () => {
   const color = useColorModeValue("light", "dark");
   const [value, setValue] = useState(testVal);
   const setVal = useCallback((val: string) => {
-    // PQLLanguage.parser.parse(val).iterate({
-    //   enter: (node) => {
-    //     console.log(node.name);
-    //     return true;
-    //   },
-    // });
     setValue(val);
   }, []);
   const [vimEnabled, setVimEnabled] = useState(

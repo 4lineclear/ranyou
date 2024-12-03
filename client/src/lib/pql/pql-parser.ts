@@ -3,39 +3,31 @@ import { LRParser } from "@lezer/lr";
 import { highlight } from "./pql-highlight";
 const spec_Name = {
   __proto__: null,
-  let: 14,
-  return: 16,
-  fn: 22,
-  end: 32,
-  select: 36,
-  from: 40,
-  where: 42,
-  not: 60,
-  in: 62,
-  between: 64,
-  like: 66,
-  order: 70,
-  by: 72,
+  select: 14,
+  from: 20,
+  where: 22,
+  order: 38,
+  by: 40,
 };
 export const parser = LRParser.deserialize({
   version: 14,
   states:
-    "*zQ]QPOOOOQO'#DT'#DTQ]QPOOOeQPO'#CaOjQPO'#CaOOQO-E7R-E7RO!UQPO,58{O!ZQQO'#CsO!xQPO'#CvOOQO'#Cs'#CsO#aQQO'#CeO#rQPO'#DROOQO'#Ce'#CeO#}QPO'#CfO$SQPO'#CmO$bQPO,58{OjQPO1G.gO!xQPO,59`O$gQPO'#DWO$xQPO'#CuO%QQQO'#CuO%fQPO,59bO$gQPO,59^O%kQPO,59^O%pQQO,59^O%{QPO'#DVO&QQPO'#CoO&QQPO'#CoOOQO,59m,59mO&cQPO,59QO&kQPO,59XOOQO1G.g1G.gO&pQPO7+$RO&uQPO1G.zO&zQQO,59rOOQO-E7U-E7UO'`QPO,59aOOQO1G.|1G.|OOQO1G.x1G.xO$gQPO1G.xO'hQPO1G.xOOQO,59q,59qOOQO-E7T-E7TO'mQPO,59ZO(OQPO'#CiO(ZQPO'#ChO(cQPO1G.lO(nQPO1G.lO(sQPO1G.sOOQO<<Gm<<GmOOQO7+$f7+$fOOQO7+$d7+$dO$gQPO7+$dO)XQSO,59TO)^QPO'#DUO)cQPO,59SO)kQPO7+$WOOQO7+$W7+$WO)kQPO7+$WO)vQPO7+$_OOQO<<HO<<HOOOQO1G.o1G.oOOQO,59p,59pOOQO-E7S-E7SOOQO<<Gr<<GrO*RQPO<<GrO*^QPO<<GyO$gQPO<<GyOOQOAN=^AN=^O*cQPOAN=eO*qQQOAN=eO+VQQO'#CrOOQOG23PG23PO+eQPOG23PO*cQPOLD(kOOQO!$'LV!$'LV",
+    "%vQ]QPOOOOQO'#Cq'#CqQ]QPOOObQPO'#CaOOQO-E6o-E6oOpQPO'#CrOuQPO'#CdOuQPO'#CdO!ZQPO,58{OOQO,59^,59^OOQO-E6p-E6pO!`QPO,59OO!tQPO1G.gO#]QPO7+$RO#kQPO<<GmO#pQPO<<GmO$RQPOAN=XO$aQPO'#CjOOQO'#Ci'#CiO$kQPOAN=XO%`QPO'#ChOOQOG22sG22sO#pQPO'#CsO%zQPO,59UOOQO,59U,59UO&SQPO,59UO&^QPOG22sOOQO'#Cn'#CnO#pQPO,59SO&cQPO,59_OOQO-E6q-E6qOOQO1G.p1G.pO&mQPO1G.pO$RQPOLD(_O&uQPO1G.nOOQO7+$[7+$[OOQO!$'Ky!$'Ky",
   stateData:
-    "+p~OPOSQOSROS~OVROWSO~OUUO~OUVOZ]Ob^OkXOlXOmXO!OWO!SZO~O}`O~O!OaOngXogXqgXrgXvgX_gX!QgXsgX~OUVO_bOkXOlXOmXO!OWO!QiP~OnhOogOqfOrfOvXX~OUkO_iOvcP~O!OmO~OUkO_iO!RnOdcP~OvoO~OUVOkXOlXOmXO!OWO~O_bO!QiX~O_bOnhOogOqfOrfO!QiX~O!QuO~OpwO~OoxOqwOrwO~OUyO~O_iOvcXdcXecXscX~OU|O!Q!OO~Od!QO~Ov!RO~O!Q!SO~OnhOogOqfOrfO_za!Qza~O_bO!Qia~Op!UO~O_iOvcadcaecasca~O!P!VO_]X!Q]X~O_!WO!Q[X~OVROWSO`!ZO~O!Q![O~OUkO_iO!R!]OecPscPvcP~O^!_O~OU|O~O_!WO!Q[a~OVROWSO`!bO~Oe!eOs!dOvaq~OVROWSO`!fO~Ot!gO~OUkOZ]O_iOvcP~Os!kOngXogXqgXrgXva!R~OnhOogOqfOrfO~Ot!lO~O!SrmUm~",
-  goto: "%Y{PPPPP|PPP!U![P!f!iPPP!oP!sPP#S#a#x$T#xPPPPPPPPPP!oP$Z$i$o$}]POQ!O!Y![!cQ_SRp`S[S`Q!j!gR!m!lR!PmQ}mR!`!WT[S`QlZQn^Q!]!QQ!j!gR!m!l`XSW`abfw!UR!h!eSYS`SdWaQrbQvfQ!TwQ!^!UR!i!ecXSW`abfw!U!eQeWRqaQQOUTQ!Y!cQ!Y!OR!c![Q!X}R!a!XYjZ^!Q!g!lSzj{R{kScWaSsctRtd",
+    "']~OPOSQOSROS~OVRO~OUVOXTOjWOYWP~OUXO~OXTOYWXVWXZWXcWXhWX~OY[O~OXTOYWaVWaZWacWahWa~OUVOXTOj]OVWPZWPcWPhWP~OZ_Oc^OVTqhTq~Od`O~OUbO_bO`bOabOkaO~OUVOXTOVWPhWP~OXfOlhO~P#pOcjOVT!RhT!Rm]Xn]Xo]Xp]Xq]Xr]Xs]Xt]X~OmkOnkOokOpkOqkOrkOskOtkO~OXfOloO~OXfOloO~P%`OdqO~OXgalga~P%`OXfOlsO~OV[ic[ih[iX[il[i~P%`OaU~",
+  goto: "#YhPPPPPiPPmPPPy!R!_PPP!ePP!k!q#OTPOQQWRQ][Qe`RtqUbaflRc_Qd_QiaQmfRrlXb_aflXldimrQQORSQWUR[`qSYUZRZVQgaSngpRpi",
   nodeNames:
-    "⚠ Spaces NewLine Comment pql Statement Name let return StatementValue Fn fn FnParams Param Type , end Select select NameArray from where Predicate Value FnCall Array Tuple String Number ConstBool not in between like Cmp order by Join ;",
-  maxTerm: 50,
+    "⚠ Spaces NewLine Comment pql Select Name select NameArray , from where Predicate Value Tuple String Number ConstBool Cmp order by",
+  maxTerm: 36,
   propSources: [highlight],
   skippedNodes: [0, 1, 2, 3],
-  repeatNodeCount: 4,
+  repeatNodeCount: 3,
   tokenData:
-    ",k~RwXY#lYZ$aZ[#l]^$apq#lqr$frs$qvw$lxy%cyz%hz{%m|}%r}!O%w!Q![&f![!]&n!]!^&s!^!_&x!_!`'Q!`!a&x!c!}'Y#Q#R$l#R#S'Y#T#Y'Y#Y#Z'j#Z#^'Y#^#_)u#_#h'Y#h#i+m#i#o'Y#p#q$l$f$g#l#BY#BZ#l$IS$I_#l$I|$I}$a$I}$JO$a$JT$JU#l$KV$KW#l&FU&FV#l?HT?HU#l~#qYP~XY#lZ[#lpq#l$f$g#l#BY#BZ#l$IS$I_#l$JT$JU#l$KV$KW#l&FU&FV#l?HT?HU#l~$fOQ~Q$iP!_!`$lQ$qOrQ~$tUOY$qZr$qrs%Ws;'S$q;'S;=`%]<%lO$q~%]Ok~~%`P;=`<%l$q~%hO!O~~%mO!Q~~%rO!R~~%wO_~~%zP}!O%}~&SSR~OY%}Z;'S%};'S;=`&`<%lO%}~&cP;=`<%l%}~&kPl~!Q![&f~&sO!P~~&xOv~Q&}PrQ!_!`$lR'VP}P!_!`$lV'aR^SUR!c!}'Y#R#S'Y#T#o'YV'qS^SUR!c!}'Y#R#S'Y#T#U'}#U#o'YV(UT^SUR!c!}'Y#R#S'Y#T#`'Y#`#a(e#a#o'YV(lT^SUR!c!}'Y#R#S'Y#T#g'Y#g#h({#h#o'YV)ST^SUR!c!}'Y#R#S'Y#T#X'Y#X#Y)c#Y#o'YV)lR^SmPUR!c!}'Y#R#S'Y#T#o'YV)|T^SUR!c!}'Y#R#S'Y#T#c'Y#c#d*]#d#o'YV*dT^SUR!c!}'Y#R#S'Y#T#]'Y#]#^*s#^#o'YV*zT^SUR!c!}'Y#R#S'Y#T#b'Y#b#c+Z#c#o'YV+dR^S!SPUR!c!}'Y#R#S'Y#T#o'YV+tT^SUR!c!}'Y#R#S'Y#T#f'Y#f#g,T#g#o'YV,[T^SUR!c!}'Y#R#S'Y#T#i'Y#i#j({#j#o'Y",
-  tokenizers: [0, 1, 2],
+    "-P~RsXY#`YZ$TZ[#`]^$Tpq#`qr$Yrs$evw%Vxy%byz%gz{%l|}%q}!O%v!O!P&e!Q!['z!^!_(t!_!`)R!`!a)^!c!})k#R#S)k#T#Y)k#Y#Z)y#Z#h)k#h#i+z#i#o)k#p#q,t$f$g#`#BY#BZ#`$IS$I_#`$I|$I}$T$I}$JO$T$JT$JU#`$KV$KW#`&FU&FV#`?HT?HU#`~#eYP~XY#`Z[#`pq#`$f$g#`#BY#BZ#`$IS$I_#`$JT$JU#`$KV$KW#`&FU&FV#`?HT?HU#`~$YOQ~~$]P!_!`$`~$eOr~~$hUOY$eZr$ers$zs;'S$e;'S;=`%P<%lO$e~%PO_~~%SP;=`<%l$e~%YPvw%]~%bOs~~%gOk~~%lOl~~%qOj~~%vOX~~%yP}!O%|~&RSR~OY%|Z;'S%|;'S;=`&_<%lO%|~&bP;=`<%l%|~&hP!Q![&k~&nQ!Q![&t#R#S&t~&yS`~!Q![&t!g!h'V#R#S&t#X#Y'V~'YS{|'f}!O'f!Q!['o#R#S'o~'iQ!Q!['o#R#S'o~'tQ`~!Q!['o#R#S'o~'}R!Q![(W#R#S(W#b#c(o~(]U`~!O!P&e!Q![(W!g!h'V#R#S(W#X#Y'V#b#c(o~(tO`~~(yPm~!_!`(|~)ROo~~)UP!_!`)X~)^Oq~~)cPn~!_!`)f~)kOp~~)pRU~!c!})k#R#S)k#T#o)k~*OSU~!c!})k#R#S)k#T#U*[#U#o)k~*aTU~!c!})k#R#S)k#T#`)k#`#a*p#a#o)k~*uTU~!c!})k#R#S)k#T#g)k#g#h+U#h#o)k~+ZTU~!c!})k#R#S)k#T#X)k#X#Y+j#Y#o)k~+qRa~U~!c!})k#R#S)k#T#o)k~,PTU~!c!})k#R#S)k#T#f)k#f#g,`#g#o)k~,eTU~!c!})k#R#S)k#T#i)k#i#j+U#j#o)k~,wP#p#q,z~-POt~",
+  tokenizers: [0],
   topRules: { pql: [0, 4] },
   specialized: [
     { term: 6, get: (value: keyof typeof spec_Name) => spec_Name[value] || -1 },
   ],
-  tokenPrec: 486,
+  tokenPrec: 286,
 });
