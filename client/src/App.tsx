@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Provider } from "./components/ui/provider";
 import {
   PlaylistRecord,
@@ -11,7 +11,16 @@ import RecordsContext from "./AppContext";
 import { Redirect, Route, Switch } from "wouter";
 import NotFound from "./page/not-found";
 import PlayPage from "./page/play";
-import Fior from "./page/fior/fior";
+import { AbsoluteCenter, Heading, Spinner, VStack } from "@chakra-ui/react";
+
+const Fallback = () => (
+  <AbsoluteCenter>
+    <VStack>
+      <Spinner size="xl" />
+      <Heading size="2xl">Loading</Heading>
+    </VStack>
+  </AbsoluteCenter>
+);
 
 const App = () => {
   const [records, setRecords] = useState(readLocalRecords());
@@ -30,6 +39,8 @@ const App = () => {
       writeLocalRecords(newRecords);
     },
   };
+
+  const Fior = lazy(() => import("./page/fior"));
 
   // TODO: check if play index is integer
   return (
@@ -53,8 +64,10 @@ const App = () => {
                 )
               }
             </Route>
-            <Route path="/fior/:path?">
-              {(params) => <Fior path={params["path"] ?? "menu"}></Fior>}
+            <Route path="/fior/">
+              <Suspense fallback={<Fallback />}>
+                <Fior />
+              </Suspense>
             </Route>
             <Route component={NotFound} />
           </Switch>

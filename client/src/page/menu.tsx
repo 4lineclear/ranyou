@@ -71,7 +71,7 @@ const RecordComponent = ({
         }}
       />
       <Float placement="top-start" offsetX={numLen(pr.playlist_length)}>
-        <Mark variant="solid" rounded="md">
+        <Mark variant="solid" rounded="md" px="1">
           {pr.playlist_length}
         </Mark>
       </Float>

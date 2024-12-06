@@ -7,14 +7,11 @@
     "shared"
   ],
   "scripts": {
-    "format": "prettier --write .",
-    "prepare": "lezer-generator --typeScript ./client/src/lib/pql/pql.grammar -o ./client/src/lib/pql/pql-parser.ts"
+    "format": "prettier --write ."
   },
   "devDependencies": {
     "prettier": "^3.3.3",
     "ranyou-shared": "workspace:shared"
   },
-  "dependencies": {
-    "@lezer/generator": "^1.7.1"
-  }
+  "dependencies": {}
 }
