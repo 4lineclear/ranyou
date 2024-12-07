@@ -1,15 +1,14 @@
 import { PlaylistItem } from "ranyou-shared/src";
 
 export type FiorData = {
-  columns: FiorColumn[];
+  columns: Map<string, FiorColumn>;
 };
 export type FiorColumn = {
-  columnId: string;
-  rows: FiorItem[];
+  rows: Map<string, FiorItem>;
   name: string;
 };
 
-export type FiorItem = { rowId: string } & (Filter | Order);
+export type FiorItem = Filter | Order;
 export type Filter = {
   not?: boolean;
   filter: Search | Predicate;
