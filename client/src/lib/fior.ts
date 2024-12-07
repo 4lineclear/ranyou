@@ -1,10 +1,10 @@
 import { PlaylistItem } from "ranyou-shared/src";
 
 export type FiorData = {
-  columns: Map<string, FiorColumn>;
+  columns: Record<string, FiorColumn>;
 };
 export type FiorColumn = {
-  rows: Map<string, FiorItem>;
+  rows: Record<string, FiorItem>;
   name: string;
 };
 

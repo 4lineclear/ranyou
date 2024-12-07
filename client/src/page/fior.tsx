@@ -3,6 +3,7 @@ import { ColorModeButton } from "@/components/ui/color-mode";
 import {
   Filter,
   FiorColumn,
+  // FiorColumn,
   FiorData,
   FiorItem,
   Order,
@@ -36,135 +37,32 @@ import { useMemo, useRef, useState } from "react";
 
 import { v4 } from "uuid";
 
-enum RowAction {
-  Add,
-  Delete,
-}
-
-type RowUpdate = {
-  column: string;
-  row: string;
-  action: RowAction;
-  item?: FiorItem;
-};
-
-enum ColumnAction {
-  Add,
-  Delete,
-  Rename,
-}
-
-type ColumnUpdate = {
-  column: string;
-  name: string;
-  action: ColumnAction;
-};
-
-type Update = RowUpdate | ColumnUpdate;
-
-type Stores = {
-  updateAll: (columns: string[]) => void;
-  columnStore: ColumnStoreSet;
-};
-type ColumnStoreSet = Record<string, [ColumnStore, (column: FiorColumn) => void]>;
-type RowStoreSet = Record<string, (row: FiorItem) => void>;
-type ColumnStore = {
-  rowStore: RowStoreSet;
-};
-
-const rowUpdate = (stores: Stores, fior: FiorData, update: Update) => {
-  const col = fior.columns.get(update.column);
-  if (!col) return false;
-  const colStore = stores.columnStore[update.column];
-  if (update.action === RowAction.Add) {
-    if (!update.item) return false;
-    col.rows.set(update.row, update.item);
-    colStore[0].rowStore[update.row](update.item);
-    return true;
-  }
-  if (update.action === RowAction.Delete && col.rows.delete(update.row)) {
-    if (update.item) colStore[1](col);
-    return true;
-  }
-  return false;
-};
-
-const columnUpdate = (stores: Stores, fior: FiorData, update: Update) => {
-  if (update.action === ColumnAction.Add) {
-    fior.columns.set(update.column, {
-      name: update.name,
-      rows: new Map(),
-    });
-    stores.updateAll([...fior.columns.keys()]);
-    return true;
-  }
-  if (
-    update.action === ColumnAction.Delete &&
-    fior.columns.delete(update.column)
-  ) {
-    stores.updateAll([...fior.columns.keys()]);
-    return true;
-  }
-  if (update.action === ColumnAction.Rename) {
-    const col = fior.columns.get(update.column);
-    if (!col) return false;
-    col.name = update.name;
-    stores.columnStore[update.column][1](col);
-    return true;
-  }
-  return false;
-};
-
-const applyUpdate = (
-  stores: Stores,
-  fior: FiorData,
-  update: Update,
-): boolean =>
-  "row" in update
-    ? rowUpdate(stores, fior, update)
-    : columnUpdate(stores, fior, update);
-
 const saveData = (data: FiorData) => {
-  localStorage.setItem(
-    "fiorData",
-    JSON.stringify(data, (_, value) =>
-      value instanceof Map
-        ? {
-          dataType: "Map",
-          value: Array.from(value.entries()),
-        }
-        : value,
-    ),
-  );
+  localStorage.setItem("fiorData", JSON.stringify(data));
 };
 
 const loadData = (): FiorData => {
   const stored = localStorage.getItem("fiorData");
   if (stored) {
     try {
-      return JSON.parse(stored, (_, value) =>
-        typeof value === "object" && value !== null && value.dataType === "Map"
-          ? new Map(value.value)
-          : value,
-      );
+      return JSON.parse(stored);
     } catch {
-      saveData({ columns: new Map() });
+      saveData({ columns: {} });
     }
   }
-  return { columns: new Map() };
+  return { columns: {} };
 };
 
-type AllProps = ItemProps & RCProps;
+type AllProps = Items & RCProps;
 
-type ItemProps = {
+type Items = {
   items: FiorData;
-  update: (update: Update) => void;
 };
-type RCProps = ColumnProps & RowProps;
-type ColumnProps = {
+type RCProps = Column & Row;
+type Column = {
   column: string;
 };
-type RowProps = {
+type Row = {
   row: string;
 };
 
@@ -180,11 +78,12 @@ const FiorButton = (props: ButtonProps) => {
 };
 
 const SearchRow = ({
-  update,
   search,
-  column,
-  row,
-}: { search: Search } & AllProps) => {
+  reloadRow,
+}: {
+  search: Search;
+  reloadRow: () => void;
+}) => {
   return (
     <Box gap="2" w="full">
       <Heading size="sm" mb="2">
@@ -195,18 +94,8 @@ const SearchRow = ({
           size="sm"
           value={search.search}
           onInput={(e) => {
-            update({
-              column,
-              row,
-              action: RowAction.Add,
-              item: {
-                filter: {
-                  ...search,
-                  search: e.currentTarget.value,
-                },
-              },
-            });
-            // setItems({ ...items });
+            search.search = e.currentTarget.value;
+            reloadRow();
           }}
         />
         <Checkbox
@@ -215,17 +104,8 @@ const SearchRow = ({
           checked={search.regex}
           onCheckedChange={(c) => {
             if (typeof c.checked === "boolean") {
-              update({
-                column,
-                row,
-                action: RowAction.Add,
-                item: {
-                  filter: {
-                    ...search,
-                    regex: c.checked,
-                  },
-                },
-              });
+              search.regex = c.checked;
+              reloadRow();
             }
           }}
         >
@@ -236,20 +116,14 @@ const SearchRow = ({
   );
 };
 const FilterRow = ({
-  items,
-  update,
   rowItem,
-  column,
-  row,
-}: { rowItem: Filter } & AllProps) => {
+  reloadRow,
+}: {
+  rowItem: Filter;
+  reloadRow: () => void;
+}) => {
   return "search" in rowItem.filter ? (
-    <SearchRow
-      search={rowItem.filter}
-      items={items}
-      update={update}
-      column={column}
-      row={row}
-    />
+    <SearchRow search={rowItem.filter} reloadRow={reloadRow} />
   ) : (
     <Flex>
       <Heading>Search Filter</Heading>
@@ -268,14 +142,15 @@ const OrderRow = ({ rowItem }: { rowItem: Order }) => {
 
 const EditorRow = ({
   items,
-  update,
   column,
   row,
-  rowItem,
-}: {
-  rowItem: FiorItem;
-} & AllProps) => {
-  // const { items } = useContext(FiorContext);
+  reloadRows,
+}: { reloadRows: () => void } & AllProps) => {
+  const [rowItem, setRowItem] = useState(items.columns[column].rows[row]);
+  const reloadRow = () => {
+    setRowItem({ ...rowItem });
+    saveData(items);
+  };
   return (
     <Flex
       w="full"
@@ -288,13 +163,7 @@ const EditorRow = ({
       {"order" in rowItem ? (
         <OrderRow rowItem={rowItem} />
       ) : (
-        <FilterRow
-          items={items}
-          update={update}
-          rowItem={rowItem}
-          column={column}
-          row={row}
-        />
+        <FilterRow rowItem={rowItem} reloadRow={reloadRow} />
       )}
       <MenuRoot>
         <MenuTrigger ms="auto" asChild>
@@ -311,11 +180,8 @@ const EditorRow = ({
             color="fg.error"
             _hover={{ bg: "bg.error", color: "fg.error" }}
             onClick={() => {
-              update({
-                column,
-                row,
-                action: RowAction.Delete,
-              });
+              delete items.columns[column].rows[row];
+              reloadRows();
             }}
           >
             Delete...
@@ -326,40 +192,109 @@ const EditorRow = ({
   );
 };
 
-const EditorColumn = ({
+const ColumnTitle = ({
   items,
-  update,
-  colItem,
   column,
+  reloadColumns,
+  colItem,
 }: {
+  reloadColumns: () => void;
   colItem: FiorColumn;
-  column: string;
-} & ItemProps) => {
-  const addFilter = () =>
-    update({
-      column,
-      row: v4(),
-      action: RowAction.Add,
-      item: {
-        filter: {
-          cols: [],
-          search: "",
-        },
-      },
-    });
-  const addOrder = () =>
-    update({
-      column,
-      row: v4(),
-      action: RowAction.Add,
-      item: {
-        order: {
-          cols: ["position", "index"],
-        },
-      },
-    });
+} & Items &
+  Column) => {
   const renameRef = useRef<HTMLInputElement>(null);
   const [renameOpen, setRenameOpen] = useState(false);
+  return (
+    <MenuRoot>
+      <MenuTrigger ms="auto" asChild>
+        <IconButton variant="ghost">
+          <LuMenu />
+        </IconButton>
+      </MenuTrigger>
+      <MenuContent>
+        <DialogRoot
+          initialFocusEl={() => renameRef.current}
+          open={renameOpen}
+          onOpenChange={(e) => setRenameOpen(e.open)}
+        >
+          <DialogTrigger asChild>
+            <MenuItem value="rename">Rename</MenuItem>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Rename "{colItem.name}"</DialogTitle>
+            </DialogHeader>
+            <DialogBody pb="4">
+              <Field label="Column Name">
+                <Input
+                  defaultValue={colItem.name}
+                  placeholder={colItem.name}
+                  ref={renameRef}
+                  onKeyDown={(k) => {
+                    if (k.key === "Enter" && renameRef.current?.value) {
+                      colItem.name = renameRef.current?.value;
+                      reloadColumns();
+                      setRenameOpen(false);
+                    }
+                  }}
+                ></Input>
+              </Field>
+            </DialogBody>
+            <DialogFooter>
+              <DialogActionTrigger asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogActionTrigger>
+              <DialogActionTrigger asChild>
+                <Button
+                  onClick={() => {
+                    if (renameRef.current?.value) {
+                      colItem.name = renameRef.current?.value;
+                      reloadColumns();
+                    }
+                  }}
+                >
+                  Save
+                </Button>
+              </DialogActionTrigger>
+            </DialogFooter>
+          </DialogContent>
+        </DialogRoot>
+        <MenuItem value="export">Export</MenuItem>
+        <MenuItem
+          value="delete"
+          color="fg.error"
+          _hover={{ bg: "bg.error", color: "fg.error" }}
+          onClick={() => {
+            delete items.columns[column];
+            reloadColumns();
+          }}
+        >
+          Delete...
+        </MenuItem>
+      </MenuContent>
+    </MenuRoot>
+  );
+};
+
+const EditorColumn = ({
+  items,
+  column,
+  reloadColumns,
+}: {
+  reloadColumns: () => void;
+} & Items &
+  Column) => {
+  const colItem = items.columns[column];
+  const [rows, setRows] = useState(Object.keys(colItem.rows));
+  const addRow = (rowItem: FiorItem) => {
+    const row = v4();
+    colItem.rows[row] = rowItem;
+    setRows([...rows, row]);
+  };
+  const reloadRows = () => {
+    setRows(Object.keys(colItem.rows));
+    saveData(items);
+  };
   return (
     <Box
       bg="bg"
@@ -371,101 +306,44 @@ const EditorColumn = ({
       <Flex mb="2" alignItems="center">
         <Heading>{colItem.name}</Heading>
         {/* TODO: work on the below */}
-        <MenuRoot>
-          <MenuTrigger ms="auto" asChild>
-            <IconButton variant="ghost">
-              <LuMenu />
-            </IconButton>
-          </MenuTrigger>
-          <MenuContent>
-            <DialogRoot
-              initialFocusEl={() => renameRef.current}
-              open={renameOpen}
-              onOpenChange={(e) => setRenameOpen(e.open)}
-            >
-              <DialogTrigger asChild>
-                <MenuItem value="rename">Rename</MenuItem>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Rename "{colItem.name}"</DialogTitle>
-                </DialogHeader>
-                <DialogBody pb="4">
-                  <Field label="Column Name">
-                    <Input
-                      defaultValue={colItem.name}
-                      placeholder={colItem.name}
-                      ref={renameRef}
-                      onKeyDown={(k) => {
-                        if (k.key === "Enter" && renameRef.current?.value) {
-                          update({
-                            column,
-                            name: renameRef.current?.value,
-                            action: ColumnAction.Rename,
-                          });
-                          setRenameOpen(false);
-                        }
-                      }}
-                    ></Input>
-                  </Field>
-                </DialogBody>
-                <DialogFooter>
-                  <DialogActionTrigger asChild>
-                    <Button variant="outline">Cancel</Button>
-                  </DialogActionTrigger>
-                  <DialogActionTrigger asChild>
-                    <Button
-                      onClick={() => {
-                        if (renameRef.current?.value) {
-                          update({
-                            column,
-                            name: renameRef.current?.value,
-                            action: ColumnAction.Rename,
-                          });
-                        }
-                      }}
-                    >
-                      Save
-                    </Button>
-                  </DialogActionTrigger>
-                </DialogFooter>
-              </DialogContent>
-            </DialogRoot>
-            <MenuItem value="export">Export</MenuItem>
-            <MenuItem
-              value="delete"
-              color="fg.error"
-              _hover={{ bg: "bg.error", color: "fg.error" }}
-              onClick={() => {
-                update({
-                  column,
-                  name: colItem.name,
-                  action: ColumnAction.Delete,
-                });
-              }}
-            >
-              Delete...
-            </MenuItem>
-          </MenuContent>
-        </MenuRoot>
+        <ColumnTitle
+          items={items}
+          column={column}
+          colItem={colItem}
+          reloadColumns={reloadColumns}
+        />
       </Flex>
       <Flex gap="1" mb="2">
-        <FiorButton flexGrow="1" onClick={() => addFilter()}>
+        <FiorButton flexGrow="1" onClick={() => {
+          addRow({
+            filter: {
+              cols: [],
+              search: "",
+            },
+          });
+          reloadRows();
+        }}>
           +Filter
         </FiorButton>
-        <FiorButton flexGrow="1" onClick={() => addOrder()}>
+        <FiorButton flexGrow="1" onClick={() => {
+          addRow({
+            order: {
+              cols: [],
+            },
+          });
+          reloadRows();
+        }}>
           +Order
         </FiorButton>
       </Flex>
       <Flex direction="column" gapY="1">
-        {[...colItem.rows.entries()].map(([row, rowItem]) => (
+        {rows.map((row) => (
           <EditorRow
             key={row}
-            rowItem={rowItem}
             column={column}
             row={row}
             items={items}
-            update={update}
+            reloadRows={reloadRows}
           />
         ))}
       </Flex>
@@ -476,20 +354,19 @@ const EditorColumn = ({
 const EditorGrid = ({
   columns,
   items,
-  update,
+  reloadColumns,
 }: {
   columns: string[];
-  setColumns: (columns: string[]) => void;
-} & ItemProps) => {
+  reloadColumns: () => void;
+} & Items) => {
   return (
     <Flex minH="full" h="fit-content" w="full" bg="bg.emphasized" p="3" gap="2">
       {columns.map((column) => (
         <EditorColumn
           key={column}
-          colItem={items.columns.get(column)!}
           column={column}
           items={items}
-          update={update}
+          reloadColumns={reloadColumns}
         />
       ))}
     </Flex>
@@ -505,47 +382,27 @@ let count = 0;
 
 const Fior = () => {
   const items = useMemo(loadData, []);
-  const [columns, setColumns] = useState(
-    useMemo(() => [...items.columns.keys()], [items]),
-  );
-  const stores: Stores = useMemo(
-    () => {
-      const columnStore: ColumnStoreSet = {};
-      for (const [column, colItem] of items.columns) {
-        const rowStore: RowStoreSet = {};
-        for (const [row, rowItem] of colItem.rows) {
-          rowStore[row] = [];
-        }
-        columnStore[column] = [{ rowStore }, () => { }];
-      }
-      return ({
-        updateAll: setColumns,
-        columnStore,
-      });
-    },
-    [items.columns],
-  );
-  const update = (update: Update) => {
-    if (applyUpdate(stores, items, update)) saveData(items);
+  const [columns, setColumns] = useState(() => Object.keys(items.columns));
+  const reloadColumns = () => {
+    setColumns(Object.keys(items.columns));
+    saveData(items);
   };
   console.log(count++);
   const addColumnClick = () => {
-    let i = items.columns
-      .values()
+    let i = Object.values(items.columns)
       .filter(
         (col) =>
           col.name.startsWith("fior-") && !isNaN(parseInt(col.name.slice(5))),
       )
       .map((col) => parseInt(col.name.slice(5)))
-      .toArray()
       .toSorted()
       .findIndex((n, i) => n !== i);
-    if (i === -1) i = items.columns.size;
-    update({
-      column: v4(),
-      name: "fior-" + i,
-      action: ColumnAction.Add,
-    });
+    if (i === -1) i = Object.keys(items.columns).length;
+    items.columns[v4()] = {
+      name: "fior" + i,
+      rows: {},
+    };
+    reloadColumns();
   };
   return (
     <Flex w="full" h="100vh" direction="column" gap="2" p="1">
@@ -562,9 +419,9 @@ const Fior = () => {
       <Box w="full" h="full">
         <EditorGrid
           columns={columns}
-          setColumns={setColumns}
+          // setColumns={setColumns}
           items={items}
-          update={update}
+          reloadColumns={reloadColumns}
         />
       </Box>
     </Flex>
