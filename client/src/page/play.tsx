@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import {
   Spinner,
   Text,
@@ -26,7 +26,6 @@ import { fetchItems, fetchRecords, PlaylistItem } from "@/lib/youtube";
 import iso8601, { Duration } from "iso8601-duration";
 import { Link, useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
-import PlayContext, { IPlayContext } from "./play-context";
 import { Toaster, toaster } from "@/components/ui/toaster";
 import {
   BreadcrumbCurrentLink,
@@ -40,6 +39,20 @@ import {
   MenuTrigger,
 } from "@/components/ui/menu";
 import { LuChevronDown } from "react-icons/lu";
+
+export interface IPlayContext {
+  playlistId: string;
+  items: PlaylistItem[];
+  itemIndex: number;
+  setItemIndex: (n: number) => void;
+}
+
+const PlayContext = createContext<IPlayContext>({
+  playlistId: "",
+  items: [],
+  itemIndex: 0,
+  setItemIndex: () => {},
+});
 
 // import { randomString } from "@/lib/random";
 // function storedOrderCode() {

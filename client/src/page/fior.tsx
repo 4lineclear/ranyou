@@ -1,14 +1,13 @@
-import { Box, Flex, Float, Heading, IconButton, Input } from "@chakra-ui/react";
-import { ColorModeButton } from "@/components/ui/color-mode";
 import {
-  Filter,
-  FiorColumn,
-  // FiorColumn,
-  FiorData,
-  FiorItem,
-  Order,
-  Search,
-} from "@/lib/fior";
+  Box,
+  Flex,
+  Float,
+  Heading,
+  IconButton,
+  Input,
+} from "@chakra-ui/react";
+import { ColorModeButton } from "@/components/ui/color-mode";
+import { FiorData, FiorItem, Search } from "@/lib/fior";
 import { Button, ButtonProps } from "@/components/ui/button";
 import {
   DialogActionTrigger,
@@ -29,13 +28,30 @@ import {
 } from "@/components/ui/menu";
 import { Checkbox } from "@/components/ui/checkbox";
 
-import { LuMenu, LuEllipsis } from "react-icons/lu";
+import { LuMenu, LuEllipsis, LuCheck, LuRegex } from "react-icons/lu";
 
 import { Link } from "wouter";
 
-import { useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { v4 } from "uuid";
+import { Status } from "@/components/ui/status";
+
+type IFiorContext = {
+  items: FiorData;
+};
+const FiorContext = createContext<IFiorContext>({
+  items: {
+    columns: {},
+  },
+});
 
 const saveData = (data: FiorData) => {
   localStorage.setItem("fiorData", JSON.stringify(data));
@@ -53,11 +69,6 @@ const loadData = (): FiorData => {
   return { columns: {} };
 };
 
-type AllProps = Items & RCProps;
-
-type Items = {
-  items: FiorData;
-};
 type RCProps = Column & Row;
 type Column = {
   column: string;
@@ -77,30 +88,55 @@ const FiorButton = (props: ButtonProps) => {
   );
 };
 
+type StatusValue = "success" | "error" | "warning" | "info";
+
 const SearchRow = ({
+  not,
   search,
   reloadRow,
 }: {
+  not?: boolean;
   search: Search;
   reloadRow: () => void;
 }) => {
+  const [regexStatus, setRegexStatus] = useState<StatusValue>("success");
+  const timer = useRef<Timer>();
+  const checkRegex = () => {
+    if (!search.regex) return;
+    try {
+      RegExp(search.search);
+      setRegexStatus("success");
+    } catch {
+      setRegexStatus("error");
+    }
+  };
+  useEffect(checkRegex, [search]);
   return (
     <Box gap="2" w="full">
       <Heading size="sm" mb="2">
-        Search Filter
+        {not && "Exclude "}Search
       </Heading>
       <Flex gap="2" w="full">
-        <Input
-          size="sm"
-          value={search.search}
-          onInput={(e) => {
-            search.search = e.currentTarget.value;
-            reloadRow();
-          }}
-        />
+        <Box position="relative">
+          <Input
+            size="sm"
+            value={search.search}
+            onInput={(e) => {
+              setRegexStatus("warning");
+              search.search = e.currentTarget.value;
+              clearTimeout(timer.current);
+              timer.current = setTimeout(checkRegex, 500);
+              reloadRow();
+            }}
+          />
+          {search.regex && (
+            <Float>
+              <Status value={regexStatus} />
+            </Float>
+          )}
+        </Box>
         <Checkbox
           ms="auto"
-          variant="outline"
           checked={search.regex}
           onCheckedChange={(c) => {
             if (typeof c.checked === "boolean") {
@@ -108,44 +144,20 @@ const SearchRow = ({
               reloadRow();
             }
           }}
-        >
-          regex
-        </Checkbox>
+          icon={<LuRegex />}
+          size="lg"
+        />
       </Flex>
     </Box>
   );
 };
-const FilterRow = ({
-  rowItem,
-  reloadRow,
-}: {
-  rowItem: Filter;
-  reloadRow: () => void;
-}) => {
-  return "search" in rowItem.filter ? (
-    <SearchRow search={rowItem.filter} reloadRow={reloadRow} />
-  ) : (
-    <Flex>
-      <Heading>Search Filter</Heading>
-      <span>{rowItem.filter.operator}</span>
-    </Flex>
-  );
-};
-const OrderRow = ({ rowItem }: { rowItem: Order }) => {
-  return (
-    <>
-      <span>order</span>
-      {rowItem.order.cols.join(" ")}
-    </>
-  );
-};
 
 const EditorRow = ({
-  items,
   column,
   row,
   reloadRows,
-}: { reloadRows: () => void } & AllProps) => {
+}: { reloadRows: () => void } & RCProps) => {
+  const { items } = useContext(FiorContext);
   const [rowItem, setRowItem] = useState(items.columns[column].rows[row]);
   const reloadRow = () => {
     setRowItem({ ...rowItem });
@@ -161,9 +173,21 @@ const EditorRow = ({
       position="relative"
     >
       {"order" in rowItem ? (
-        <OrderRow rowItem={rowItem} />
+        <>
+          <span>order</span>
+          {rowItem.order.cols.join(" ")}
+        </>
+      ) : "search" in rowItem.filter ? (
+        <SearchRow
+          search={rowItem.filter}
+          reloadRow={reloadRow}
+          not={rowItem.not}
+        />
       ) : (
-        <FilterRow rowItem={rowItem} reloadRow={reloadRow} />
+        <Flex>
+          <Heading>Check Filter</Heading>
+          <span>{rowItem.filter.operator}</span>
+        </Flex>
       )}
       <MenuRoot>
         <MenuTrigger ms="auto" asChild>
@@ -174,7 +198,22 @@ const EditorRow = ({
           </Float>
         </MenuTrigger>
         <MenuContent>
-          <MenuItem value="export">Export</MenuItem>
+          {"filter" in rowItem && (
+            <MenuItem
+              value="exclude"
+              onClick={() => {
+                rowItem.not = !rowItem.not;
+                reloadRow();
+              }}
+            >
+              Exclude
+              {rowItem.not && (
+                <Box ms="auto">
+                  <LuCheck />
+                </Box>
+              )}
+            </MenuItem>
+          )}
           <MenuItem
             value="delete"
             color="fg.error"
@@ -192,73 +231,81 @@ const EditorRow = ({
   );
 };
 
-const ColumnTitle = ({
-  items,
+const ColumnMenuPopup = ({
   column,
   reloadColumns,
-  colItem,
-}: {
-  reloadColumns: () => void;
-  colItem: FiorColumn;
-} & Items &
-  Column) => {
+}: { reloadColumns: () => void } & Column) => {
+  const { items } = useContext(FiorContext);
+  const colItem = items.columns[column];
   const renameRef = useRef<HTMLInputElement>(null);
   const [renameOpen, setRenameOpen] = useState(false);
   return (
+    <DialogRoot
+      initialFocusEl={() => renameRef.current}
+      open={renameOpen}
+      onOpenChange={(e) => setRenameOpen(e.open)}
+    >
+      <DialogTrigger asChild>
+        <MenuItem value="rename">Rename</MenuItem>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Rename "{colItem.name}"</DialogTitle>
+        </DialogHeader>
+        <DialogBody pb="4">
+          <Field label="Column Name">
+            <Input
+              defaultValue={colItem.name}
+              placeholder={colItem.name}
+              ref={renameRef}
+              onKeyDown={(k) => {
+                if (k.key === "Enter" && renameRef.current?.value) {
+                  colItem.name = renameRef.current?.value;
+                  reloadColumns();
+                  setRenameOpen(false);
+                }
+              }}
+            ></Input>
+          </Field>
+        </DialogBody>
+        <DialogFooter>
+          <DialogActionTrigger asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogActionTrigger>
+          <DialogActionTrigger asChild>
+            <Button
+              onClick={() => {
+                if (renameRef.current?.value) {
+                  colItem.name = renameRef.current?.value;
+                  reloadColumns();
+                }
+              }}
+            >
+              Save
+            </Button>
+          </DialogActionTrigger>
+        </DialogFooter>
+      </DialogContent>
+    </DialogRoot>
+  );
+};
+
+const ColumnTitle = ({
+  column,
+  reloadColumns,
+}: {
+  reloadColumns: () => void;
+} & Column) => {
+  const { items } = useContext(FiorContext);
+  return (
     <MenuRoot>
       <MenuTrigger ms="auto" asChild>
-        <IconButton variant="ghost">
-          <LuMenu />
+        <IconButton variant="ghost" p="1" size="lg">
+          <LuMenu size="lg" />
         </IconButton>
       </MenuTrigger>
       <MenuContent>
-        <DialogRoot
-          initialFocusEl={() => renameRef.current}
-          open={renameOpen}
-          onOpenChange={(e) => setRenameOpen(e.open)}
-        >
-          <DialogTrigger asChild>
-            <MenuItem value="rename">Rename</MenuItem>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Rename "{colItem.name}"</DialogTitle>
-            </DialogHeader>
-            <DialogBody pb="4">
-              <Field label="Column Name">
-                <Input
-                  defaultValue={colItem.name}
-                  placeholder={colItem.name}
-                  ref={renameRef}
-                  onKeyDown={(k) => {
-                    if (k.key === "Enter" && renameRef.current?.value) {
-                      colItem.name = renameRef.current?.value;
-                      reloadColumns();
-                      setRenameOpen(false);
-                    }
-                  }}
-                ></Input>
-              </Field>
-            </DialogBody>
-            <DialogFooter>
-              <DialogActionTrigger asChild>
-                <Button variant="outline">Cancel</Button>
-              </DialogActionTrigger>
-              <DialogActionTrigger asChild>
-                <Button
-                  onClick={() => {
-                    if (renameRef.current?.value) {
-                      colItem.name = renameRef.current?.value;
-                      reloadColumns();
-                    }
-                  }}
-                >
-                  Save
-                </Button>
-              </DialogActionTrigger>
-            </DialogFooter>
-          </DialogContent>
-        </DialogRoot>
+        <ColumnMenuPopup column={column} reloadColumns={reloadColumns} />
         <MenuItem value="export">Export</MenuItem>
         <MenuItem
           value="delete"
@@ -277,13 +324,12 @@ const ColumnTitle = ({
 };
 
 const EditorColumn = ({
-  items,
   column,
   reloadColumns,
 }: {
   reloadColumns: () => void;
-} & Items &
-  Column) => {
+} & Column) => {
+  const { items } = useContext(FiorContext);
   const colItem = items.columns[column];
   const [rows, setRows] = useState(Object.keys(colItem.rows));
   const addRow = (rowItem: FiorItem) => {
@@ -305,34 +351,40 @@ const EditorColumn = ({
     >
       <Flex mb="2" alignItems="center">
         <Heading>{colItem.name}</Heading>
-        {/* TODO: work on the below */}
-        <ColumnTitle
-          items={items}
-          column={column}
-          colItem={colItem}
-          reloadColumns={reloadColumns}
-        />
+        <ColumnTitle column={column} reloadColumns={reloadColumns} />
       </Flex>
       <Flex gap="1" mb="2">
-        <FiorButton flexGrow="1" onClick={() => {
-          addRow({
-            filter: {
-              cols: [],
-              search: "",
-            },
-          });
-          reloadRows();
-        }}>
-          +Filter
-        </FiorButton>
-        <FiorButton flexGrow="1" onClick={() => {
-          addRow({
-            order: {
-              cols: [],
-            },
-          });
-          reloadRows();
-        }}>
+        <MenuRoot positioning={{ sameWidth: true }}>
+          <MenuTrigger asChild>
+            <FiorButton flexGrow="1">+Filter</FiorButton>
+          </MenuTrigger>
+          <MenuContent>
+            <MenuItem
+              value="search"
+              onClick={() => {
+                addRow({
+                  filter: {
+                    cols: [],
+                    search: "",
+                  },
+                });
+              }}
+            >
+              +Search
+            </MenuItem>
+            <MenuItem value="check">+Check</MenuItem>
+          </MenuContent>
+        </MenuRoot>
+        <FiorButton
+          flexGrow="1"
+          onClick={() => {
+            addRow({
+              order: {
+                cols: [],
+              },
+            });
+          }}
+        >
           +Order
         </FiorButton>
       </Flex>
@@ -342,7 +394,6 @@ const EditorColumn = ({
             key={row}
             column={column}
             row={row}
-            items={items}
             reloadRows={reloadRows}
           />
         ))}
@@ -353,19 +404,17 @@ const EditorColumn = ({
 
 const EditorGrid = ({
   columns,
-  items,
   reloadColumns,
 }: {
   columns: string[];
   reloadColumns: () => void;
-} & Items) => {
+}) => {
   return (
     <Flex minH="full" h="fit-content" w="full" bg="bg.emphasized" p="3" gap="2">
       {columns.map((column) => (
         <EditorColumn
           key={column}
           column={column}
-          items={items}
           reloadColumns={reloadColumns}
         />
       ))}
@@ -373,12 +422,7 @@ const EditorGrid = ({
   );
 };
 
-let count = 0;
-
 // TODO: consider moving from uuids to user-set names for columns
-
-// TODO: currently each setItems call rerenders the entire fior block,
-// need to find a way to not rerender on each input
 
 const Fior = () => {
   const items = useMemo(loadData, []);
@@ -387,7 +431,6 @@ const Fior = () => {
     setColumns(Object.keys(items.columns));
     saveData(items);
   };
-  console.log(count++);
   const addColumnClick = () => {
     let i = Object.values(items.columns)
       .filter(
@@ -405,28 +448,23 @@ const Fior = () => {
     reloadColumns();
   };
   return (
-    <Flex w="full" h="100vh" direction="column" gap="2" p="1">
-      <Flex alignItems="baseline" gap="3">
-        <Heading textStyle="3xl">
-          <Link href="/">ranyou</Link>
-        </Heading>
-        <Heading textStyle="2xl">fi(lter) or(der)</Heading>
-        <ColorModeButton marginStart="auto" />
+    <FiorContext.Provider value={{ items }}>
+      <Flex w="full" h="100vh" direction="column" gap="2" p="1">
+        <Flex alignItems="baseline" gap="3">
+          <Heading textStyle="3xl">
+            <Link href="/">ranyou</Link>
+          </Heading>
+          <Heading textStyle="2xl">fi(lter) or(der)</Heading>
+          <ColorModeButton marginStart="auto" />
+        </Flex>
+        <Box>
+          <FiorButton onClick={addColumnClick}>+Column</FiorButton>
+        </Box>
+        <Box w="full" h="full">
+          <EditorGrid columns={columns} reloadColumns={reloadColumns} />
+        </Box>
       </Flex>
-      <Box>
-        <FiorButton onClick={addColumnClick}>+Column</FiorButton>
-      </Box>
-      <Box w="full" h="full">
-        <EditorGrid
-          columns={columns}
-          // setColumns={setColumns}
-          items={items}
-          reloadColumns={reloadColumns}
-        />
-      </Box>
-    </Flex>
-    // <FiorContext.Provider value={{ items, update: update }}>
-    // </FiorContext.Provider>
+    </FiorContext.Provider>
   );
 };
 
