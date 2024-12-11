@@ -5,16 +5,22 @@ import {
   Float,
   Heading,
   IconButton,
+  Input,
 } from "@chakra-ui/react";
 import { ColorModeButton } from "@/components/ui/color-mode";
 import {
+  columnQuery,
   FiorData,
   FiorItem,
   Key,
+  PlaylistData,
   Predicate,
-  PredicateOperator,
-  runQuery,
+  readPlaylistData,
   Search,
+  Operators,
+  PlItemKeys,
+  IsolatedKeys,
+  PlItemData,
 } from "@/lib/fior";
 import { Button, ButtonProps } from "@/components/ui/button";
 import {
@@ -41,15 +47,19 @@ import { v4 } from "uuid";
 import { Status } from "@/components/ui/status";
 import RecordsContext from "@/AppContext";
 import { EmptyState } from "@/components/ui/empty-state";
+import { InputGroup } from "@/components/ui/input-group";
+import TimeField from "react-simple-timefield";
 
 const FiorContext = createContext<{
   items: FiorData;
   saveData: (data: FiorData) => void;
+  playlistData: PlaylistData | "unloaded" | "failed";
 }>({
   items: {
     columns: {},
   },
   saveData: () => { },
+  playlistData: {},
 });
 const SaveContext = createContext<{
   save: () => void;
@@ -78,12 +88,6 @@ const FiorButton = (props: ButtonProps) => {
 
 type StatusValue = "success" | "error" | "warning" | "info";
 
-const filteredCols = (cols: [Key, boolean][]) => {
-  const c = cols.filter((k) => k[1]);
-  if (c.length == 1) return c[0];
-  else return c.length + " selected";
-};
-
 const SearchRow = ({
   not,
   search,
@@ -107,13 +111,18 @@ const SearchRow = ({
   };
   useEffect(checkRegex, [search]);
   const [cols, setCol] = useState<[Key, boolean][]>(() =>
-    colKeys.map((k) => [k, search.cols.includes(k)]),
+    PlItemKeys.map((k) => [k, search.cols?.includes(k) ?? false]),
   );
   const colChange = (i: number) => () => {
     cols[i] = [cols[i][0], !cols[i][1]];
     search.cols = cols.filter((c) => c[1]).map((k) => k[0]);
     setCol([...cols]);
     save();
+  };
+  const filteredCols = () => {
+    const c = cols.filter((k) => k[1]);
+    if (c.length == 1) return c[0];
+    else return c.length + " selected";
   };
   return (
     <Box gap="2" w="full">
@@ -141,11 +150,11 @@ const SearchRow = ({
         <MenuRoot positioning={{ sameWidth: true }}>
           <MenuTrigger asChild>
             <Button w="35%" variant="surface" alignSelf="center">
-              {filteredCols(cols)}
+              {filteredCols()}
             </Button>
           </MenuTrigger>
           <MenuContent minW="0">
-            {colKeys.map((c, i) => (
+            {PlItemKeys.map((c, i) => (
               <MenuItem
                 key={c}
                 value={c}
@@ -168,31 +177,41 @@ const SearchRow = ({
   );
 };
 
-const operators: PredicateOperator[] = ["==", "!=", "<", ">", "<=", ">="];
-const colKeys: Key[] = [
-  "video_id",
-  "title",
-  "description",
-  "note",
-  "position",
-  "channel_title",
-  "channel_id",
-  "duration",
-  "added_at",
-  "published_at",
-];
 const CheckRow = ({ not, check }: { not?: boolean; check: Predicate }) => {
   const { save } = useContext(SaveContext);
   const [value, setValue] = useState(useMemo(() => check.value, [check]));
   const [operator, setOperator] = useState(check.operator);
-  const [cols, setCol] = useState<[Key, boolean][]>(() =>
-    colKeys.map((k) => [k, check.cols.includes(k)]),
-  );
-  const colChange = (i: number) => () => {
-    cols[i] = [cols[i][0], !cols[i][1]];
-    check.cols = cols.filter((c) => c[1]).map((k) => k[0]);
-    setCol([...cols]);
+  const [cols, setCols] = useState<IsolatedKeys | undefined>(() => check.cols);
+  const colChange = (k: Key) => () => {
+    const newCols: Record<string, boolean> = { ...cols };
+    if (cols) {
+      if (PlItemData[k] === PlItemData[Object.keys(cols)[0] as Key]) {
+        newCols[k] = !newCols[k];
+        if (k === "duration" && !newCols[k]) setValue("");
+        if (Object.values(newCols).every((v) => !v)) {
+          setCols(undefined);
+          check.cols = undefined;
+        } else {
+          setCols(newCols as IsolatedKeys);
+          check.cols = newCols as IsolatedKeys;
+        }
+      }
+    } else {
+      const kind = PlItemData[k];
+      Object.entries(PlItemData)
+        .filter(([, v]) => v === kind)
+        .map(([k]) => k as Key)
+        .forEach((k) => (newCols[k] = false));
+      newCols[k] = true;
+      setCols(newCols as IsolatedKeys);
+      check.cols = newCols as IsolatedKeys;
+    }
     save();
+  };
+  const filteredCols = () => {
+    const c = Object.entries(cols ?? {}).filter((k) => k[1]);
+    if (c.length == 1) return c[0];
+    else return c.length + " selected";
   };
   return (
     <Box gap="2" w="full">
@@ -200,20 +219,29 @@ const CheckRow = ({ not, check }: { not?: boolean; check: Predicate }) => {
         {not && "Exclude "}Check
       </Heading>
       <Flex w="full">
-        <MenuRoot positioning={{ sameWidth: true }}>
+        <MenuRoot positioning={{ sameWidth: true }} closeOnSelect={false}>
           <MenuTrigger asChild>
             <Button h="inherit" w="40%" variant="outline">
-              {filteredCols(cols)}
+              {filteredCols()}
             </Button>
           </MenuTrigger>
           <MenuContent minW="0">
-            {colKeys.map((c, i) => (
+            {PlItemKeys.map((c) => (
               <MenuItem
                 key={c}
                 value={c}
                 justifyContent="center"
-                bg={cols[i][1] ? "bg.emphasized" : undefined}
-                onClick={colChange(i)}
+                bg={
+                  cols && cols[c as keyof IsolatedKeys]
+                    ? "bg.emphasized"
+                    : undefined
+                }
+                onClick={colChange(c)}
+                disabled={
+                  Object.keys(cols ?? {}).length !== 0 &&
+                  cols &&
+                  cols[c as keyof IsolatedKeys] === undefined
+                }
               >
                 {c}
               </MenuItem>
@@ -227,7 +255,7 @@ const CheckRow = ({ not, check }: { not?: boolean; check: Predicate }) => {
             </Button>
           </MenuTrigger>
           <MenuContent minW="0">
-            {operators.map((op) => (
+            {Operators.map((op) => (
               <MenuItem
                 key={op}
                 value={op}
@@ -244,21 +272,52 @@ const CheckRow = ({ not, check }: { not?: boolean; check: Predicate }) => {
             ))}
           </MenuContent>
         </MenuRoot>
-        <Editable.Root
-          value={value}
-          onValueChange={(e) => {
-            setValue(e.value);
-            check.value = e.value;
-            save();
-          }}
-          border="solid 1px var(--chakra-colors-bg-emphasized)"
-          rounded="sm"
-          ms="auto"
-          w="40%"
-        >
-          <Editable.Preview />
-          <Editable.Input />
-        </Editable.Root>
+        {cols && "duration" in cols ? (
+          <Flex
+            border="solid 1px var(--chakra-colors-bg-emphasized)"
+            rounded="sm"
+            ms="auto"
+            w="40%"
+          >
+            <TimeField
+              value={value.slice(2, -1).replace(/\D+/g, ":")}
+              onChange={(_, nv) => {
+                const parts = nv.split(":");
+                check.value =
+                  "PT" + parts[0] + "H" + parts[1] + "M" + parts[2] + "S";
+                setValue(check.value);
+                save();
+              }}
+              colon=":"
+              showSeconds
+              style={{
+                textAlign: "center",
+                border: "var(--chakra-colors-bg-empahsized)",
+                background: "var(--chakra-colors-bg)",
+                color: "var(--chakra-colors-fg)",
+                width: "100%",
+                padding: "5px 8px",
+                borderRadius: "var(--charka-radii-sm)",
+              }}
+            />
+          </Flex>
+        ) : (
+          <Editable.Root
+            value={value}
+            onValueChange={(e) => {
+              check.value = e.value;
+              setValue(e.value);
+              save();
+            }}
+            border="solid 1px var(--chakra-colors-bg-emphasized)"
+            rounded="sm"
+            ms="auto"
+            w="40%"
+          >
+            <Editable.Preview />
+            <Editable.Input />
+          </Editable.Root>
+        )}
       </Flex>
     </Box>
   );
@@ -372,49 +431,29 @@ const EditorColumn = ({
 }: {
   reloadColumns: () => void;
 } & Column) => {
+  const [rowOutput, setRowOutput] = useState(0);
   const [fiorStatus, setFiorStatus] = useState<StatusValue>("success");
-  const timer = useRef<Timer>();
-  const { items, saveData } = useContext(FiorContext);
+  const { items, saveData, playlistData } = useContext(FiorContext);
   const { records } = useContext(RecordsContext);
   const colItem = items.columns[column];
+  const timer = useRef<Timer>();
   const save = () => {
     setFiorStatus("warning");
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
-      runQuery({
-        data: items,
-        columns: [column],
-        records,
-      })
-        .then(console.log)
-        .catch((e) => {
-          setFiorStatus("error");
-          console.log(e);
-        });
-      // const items = Object.keys(items.columns).map()
-      // fetchItems(playlistId)
-      //   .then((items) => {
-      //     let max = 0;
-      //     let total = 0;
-      //     for (const item of items) {
-      //       const n = iso8601.toSeconds(iso8601.parse(item.duration));
-      //       max = n > max ? n : max;
-      //       total += n;
-      //     }
-      //     const mean = total / items.length;
-      //     setDurationInfo({ max, mean });
-      //     setItems(items);
-      //     setShownItems(items.map(toShownItem));
-      //     setLoading("loaded");
-      //   })
-      //   .catch((e) => {
-      //     console.log(e);
-      //     setLoading("failed");
-      //   });
+      if (typeof playlistData !== "string") {
+        const o = columnQuery({ data: colItem, playlists: playlistData });
+        setRowOutput(Object.values(o).reduce((n, pi) => n + pi.length, 0));
+        setFiorStatus("success");
+        // console.log(Object.values(o)[0].map(pi => pi.duration));
+        // Object.values(o)
+        //   .flatMap((pi) => pi)
+        //   .forEach((pi) => console.log(pi.duration));
+      }
     }, 500);
     saveData(items);
   };
-  useEffect(save, [column, items, records, saveData]);
+  useEffect(save, [items, saveData, playlistData, colItem]);
   const [rows, setRows] = useState(Object.keys(colItem.rows));
   const addRow = (rowItem: FiorItem) => {
     const row = v4();
@@ -459,7 +498,7 @@ const EditorColumn = ({
           <MenuRoot>
             <MenuTrigger ms="auto" asChild>
               <IconButton variant="ghost" p="1" size="lg">
-                <LuMenu size="lg" />
+                <LuMenu />
               </IconButton>
             </MenuTrigger>
             <MenuContent>
@@ -517,6 +556,16 @@ const EditorColumn = ({
             </MenuContent>
           </MenuRoot>
         </Flex>
+        <Flex direction="column" gapY="1">
+          {rows.map((row) => (
+            <EditorRow
+              key={row}
+              column={column}
+              row={row}
+              reloadRows={reloadRows}
+            />
+          ))}
+        </Flex>
         <Flex gap="1">
           <MenuRoot positioning={{ sameWidth: true }}>
             <MenuTrigger asChild>
@@ -543,7 +592,7 @@ const EditorColumn = ({
                 onClick={() => {
                   addRow({
                     filter: {
-                      cols: [],
+                      cols: undefined,
                       operator: "==",
                       value: "",
                     },
@@ -569,16 +618,6 @@ const EditorColumn = ({
             +Order
           </FiorButton>
         </Flex>
-        <Flex direction="column" gapY="1">
-          {rows.map((row) => (
-            <EditorRow
-              key={row}
-              column={column}
-              row={row}
-              reloadRows={reloadRows}
-            />
-          ))}
-        </Flex>
         <Flex
           mt="auto"
           w="full"
@@ -588,6 +627,7 @@ const EditorColumn = ({
           rounded="sm"
           position="relative"
         >
+          Rows: {rowOutput}
           <Float>
             <Status value={fiorStatus} />
           </Float>
@@ -627,54 +667,49 @@ const EditorGrid = ({
 
 // TODO: setup proper record & item provider
 
-const Fior = () => {
-  const saveData = (data: FiorData) => {
-    localStorage.setItem("fiorData", JSON.stringify(data));
-  };
-  // TODO: handle malformed data
-  const loadData = (): FiorData => {
-    const stored = localStorage.getItem("fiorData");
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch {
-        saveData({ columns: {} });
-      }
+const saveData = (data: FiorData) => {
+  localStorage.setItem("fiorData", JSON.stringify(data));
+};
+// TODO: handle malformed data
+const loadData = (): FiorData => {
+  const stored = localStorage.getItem("fiorData");
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {
+      saveData({ columns: {} });
     }
-    return { columns: {} };
-  };
+  }
+  return { columns: {} };
+};
+
+const Fior = () => {
+  const { records } = useContext(RecordsContext);
   const items = useMemo(loadData, []);
   const [columns, setColumns] = useState(() => Object.keys(items.columns));
   const reloadColumns = () => {
     setColumns(Object.keys(items.columns));
     saveData(items);
   };
-  const addColumnClick = () => {
-    let i = Object.values(items.columns)
-      .filter(
-        (col) =>
-          col.name.startsWith("fior-") && !isNaN(parseInt(col.name.slice(5))),
-      )
-      .map((col) => parseInt(col.name.slice(5)))
-      .toSorted()
-      .findIndex((n, i) => n !== i);
-    if (i === -1) i = Object.keys(items.columns).length;
-    items.columns[v4()] = {
-      name: "fior" + i,
-      rows: {},
-      records: [],
-      index: Object.keys(items.columns).length,
-    };
-    reloadColumns();
-  };
+  const [playlistData, setPlaylistData] = useState<
+    PlaylistData | "unloaded" | "failed"
+  >("unloaded");
+
+  useEffect(() => {
+    readPlaylistData(records)
+      .then((d) => setPlaylistData(d))
+      .catch(() => setPlaylistData("failed"));
+  }, [records]);
+
   return (
     <FiorContext.Provider
       value={{
         items,
         saveData,
+        playlistData,
       }}
     >
-      <Flex w="full" h="100vh" direction="column" gap="2" p="1">
+      <Flex w="full" h="100vh" direction="column" gap="2" p="2">
         <Flex alignItems="baseline" gap="3">
           <Heading textStyle="3xl">
             <Link href="/">ranyou</Link>
@@ -683,7 +718,27 @@ const Fior = () => {
           <ColorModeButton marginStart="auto" />
         </Flex>
         <Box>
-          <FiorButton ms="3" onClick={addColumnClick}>
+          <FiorButton
+            onClick={() => {
+              let i = Object.values(items.columns)
+                .filter(
+                  (col) =>
+                    col.name.startsWith("fior-") &&
+                    !isNaN(parseInt(col.name.slice(5))),
+                )
+                .map((col) => parseInt(col.name.slice(5)))
+                .toSorted()
+                .findIndex((n, i) => n !== i);
+              if (i === -1) i = Object.keys(items.columns).length;
+              items.columns[v4()] = {
+                name: "fior-" + i,
+                rows: {},
+                records: [],
+                index: Object.keys(items.columns).length,
+              };
+              reloadColumns();
+            }}
+          >
             +Column
           </FiorButton>
         </Box>

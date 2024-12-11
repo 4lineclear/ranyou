@@ -4,6 +4,7 @@ import {
   PlaylistRecord,
   PlaylistRecords,
 } from "@/lib/youtube";
+import iso8601, { Duration } from "iso8601-duration";
 
 export type Index = { index: number };
 
@@ -30,7 +31,7 @@ export type Search = {
 export type PredicateOperator = "==" | "!=" | "<" | ">" | "<=" | ">=";
 export type Predicate = {
   /** The values being searched */
-  cols: Key[];
+  cols?: IsolatedKeys;
   operator: PredicateOperator;
   value: string;
 };
@@ -43,27 +44,89 @@ export type SortBy = {
   cols: Key[];
 };
 
+export type IsolatedKeys =
+  | {
+      index: boolean;
+      position: boolean;
+    } // number
+  | {
+      video_id: boolean;
+      channel_id: boolean;
+    } // id
+  | {
+      title: boolean;
+      description: boolean;
+      note: boolean;
+      duration: boolean;
+      channel_title: boolean;
+    } // string
+  | {
+      duration: boolean;
+    } // duration
+  | {
+      added_at: boolean;
+      published_at: boolean;
+    }; // date
+export const Operators: PredicateOperator[] = [
+  "==",
+  "!=",
+  "<",
+  ">",
+  "<=",
+  ">=",
+];
+export const PlItemData: Record<Key, string> = {
+  index: "number",
+  video_id: "id",
+  title: "string",
+  description: "string",
+  note: "string",
+  position: "number",
+  channel_title: "string",
+  channel_id: "id",
+  duration: "duration",
+  added_at: "date",
+  published_at: "date",
+};
+export const PlItemKeys = Object.keys(PlItemData).map((k) => k as Key);
+
 export type Key = "index" | keyof PlaylistItem;
 
 export type PlaylistData = Record<string, [PlaylistRecord, PlaylistItem[]]>;
 
+const toSec = (s: string) => iso8601.toSeconds(iso8601.parse(s));
 const cmpIndex = (a: Index, b: Index) => a.index - b.index;
 
-export const runQuery = async ({
-  data,
-  columns,
-  records,
-}: {
-  data: FiorData;
-  columns: string[];
-  records: PlaylistRecords;
-}) => {
+const applyOperator = (
+  a: string | number | Date,
+  b: string | number | Date,
+  op: PredicateOperator,
+) => {
+  if (typeof a !== typeof b) return false;
+  switch (op) {
+    case "==":
+      return a == b;
+    case "!=":
+      return a != b;
+    case "<":
+      return a < b;
+    case ">":
+      return a > b;
+    case "<=":
+      return a <= b;
+    case ">=":
+      return a >= b;
+  }
+  return false;
+};
+
+export const readPlaylistData = async (records: PlaylistRecords) => {
   const playlists: PlaylistData = {};
   for (const record of Object.values(records)) {
     const items: PlaylistItem[] = await fetchItems(record.playlist_id);
     playlists[record.playlist_id] = [record, items];
   }
-  return dataQuery({ data, columns, playlists });
+  return playlists;
 };
 
 export const dataQuery = ({
@@ -80,6 +143,7 @@ export const dataQuery = ({
     output[c] = columnQuery({ data: data.columns[c], playlists });
   return output;
 };
+
 export const columnQuery = ({
   data,
   playlists,
@@ -103,6 +167,7 @@ export const columnQuery = ({
 };
 
 // TODO: consider using & returning index's instead of items
+const whitespace = /\s+/g;
 export const rowQuery = ({
   data,
   items,
@@ -113,13 +178,15 @@ export const rowQuery = ({
   if ("filter" in data) {
     let run: (pi: PlaylistItem, i: number) => boolean;
     const filter = data.filter;
-    if (filter.cols.length === 0) return items;
     if ("search" in filter) {
-      let search = (h: string) => h.includes(filter.search);
+      if (filter.cols.length === 0 || filter.search === "") return items;
+      const searchString = filter.search.toLowerCase().replace(whitespace, "");
+      let search = (h: string) =>
+        h.toLowerCase().replace(whitespace, "").includes(searchString);
       if (filter.regex) {
         try {
           const re = new RegExp(filter.search);
-          search = (h) => re.test(h);
+          search = (h) => re.test(h.toLowerCase().replace(whitespace, ""));
         } catch {
           return items;
         }
@@ -129,16 +196,33 @@ export const rowQuery = ({
           if (col === "index") {
             if (search(i.toString())) return true;
           } else {
-            if (!pi[col]) return false;
+            if (!pi[col]) continue;
             if (search(pi[col].toString())) return true;
           }
         }
         return false;
       };
     } else {
-      // filter.value;
-      // filter.operator;
-      run = () => false;
+      if (!filter.cols || filter.value === "") return items;
+      const keys = Object.entries(filter.cols)
+        .filter(([, v]) => v)
+        .map(([k]) => k as Key);
+
+      let value: string | number | Date | Duration = filter.value;
+      const vType = PlItemData[keys[0]];
+      if (vType === "number") value = parseFloat(filter.value);
+      if (vType === "duration") value = toSec(filter.value);
+      if (vType === "date") value = new Date(filter.value);
+
+      run = (pi, i) => {
+        return keys.some((col) =>
+          applyOperator(
+            col === "index" ? i : col === "duration" ? toSec(pi[col]) : pi[col],
+            value,
+            filter.operator,
+          ),
+        );
+      };
     }
     return data.not ? items.filter((pi, i) => !run(pi, i)) : items.filter(run);
   } else {
