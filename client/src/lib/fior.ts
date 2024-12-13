@@ -5,6 +5,8 @@ import {
   PlaylistRecords,
 } from "@/lib/youtube";
 import iso8601, { Duration } from "iso8601-duration";
+import { shuffle } from "./random";
+import { Random } from "random";
 
 export type Index = { index: number };
 
@@ -20,7 +22,11 @@ export type FiorColumn = {
 export type FiorItem = (Filter | Order) & Index;
 export type Filter = {
   not?: boolean;
-  filter: Search | Predicate;
+  filter: RandomSelect | Search | Predicate;
+};
+export type RandomSelect = {
+  selectCount: number;
+  rngSeed: string;
 };
 export type Search = {
   /** The values being searched */
@@ -37,11 +43,14 @@ export type Predicate = {
 };
 export type Order = {
   rev?: boolean;
-  order: SortBy;
+  order: SortBy | Randomize;
 };
 export type SortBy = {
   /** The values being searched */
   cols: Key[];
+};
+export type Randomize = {
+  rngSeed: string;
 };
 
 export type IsolatedKeys =
@@ -103,6 +112,7 @@ const applyOperator = (
   op: PredicateOperator,
 ) => {
   if (typeof a !== typeof b) return false;
+  // console.log(a, b);
   switch (op) {
     case "==":
       return a == b;
@@ -166,8 +176,12 @@ export const columnQuery = ({
   return output;
 };
 
-// TODO: consider using & returning index's instead of items
-const whitespace = /\s+/g;
+// TODO: add rng seeds.
+
+// TODO: break down this function into smaller parts
+
+// TODO: consider using & returning indices instead of items
+const cleanStr = (s: string) => s.toLowerCase().replace(/\s+/g, "");
 export const rowQuery = ({
   data,
   items,
@@ -180,13 +194,12 @@ export const rowQuery = ({
     const filter = data.filter;
     if ("search" in filter) {
       if (filter.cols.length === 0 || filter.search === "") return items;
-      const searchString = filter.search.toLowerCase().replace(whitespace, "");
-      let search = (h: string) =>
-        h.toLowerCase().replace(whitespace, "").includes(searchString);
+      const searchString = cleanStr(filter.search);
+      let search = (h: string) => cleanStr(h).includes(searchString);
       if (filter.regex) {
         try {
           const re = new RegExp(filter.search);
-          search = (h) => re.test(h.toLowerCase().replace(whitespace, ""));
+          search = (h) => re.test(cleanStr(h));
         } catch {
           return items;
         }
@@ -202,7 +215,7 @@ export const rowQuery = ({
         }
         return false;
       };
-    } else {
+    } else if ("operator" in filter) {
       if (!filter.cols || filter.value === "") return items;
       const keys = Object.entries(filter.cols)
         .filter(([, v]) => v)
@@ -210,6 +223,7 @@ export const rowQuery = ({
 
       let value: string | number | Date | Duration = filter.value;
       const vType = PlItemData[keys[0]];
+
       if (vType === "number") value = parseFloat(filter.value);
       if (vType === "duration") value = toSec(filter.value);
       if (vType === "date") value = new Date(filter.value);
@@ -223,10 +237,57 @@ export const rowQuery = ({
           ),
         );
       };
+    } else if ("rngSeed" in filter) {
+      if (filter.selectCount >= items.length || filter.selectCount === 0)
+        return items;
+      const rng = new Random(filter.rngSeed).uniform();
+      const randomItems: [PlaylistItem, number][] = items.map((pi, i) => [
+        pi,
+        i,
+      ]);
+      shuffle(rng, randomItems);
+      return data.not
+        ? randomItems
+            .splice(filter.selectCount)
+            .toSorted(([, i1], [, i2]) => i1 - i2)
+            .map(([pi]) => pi)
+        : randomItems
+            .splice(0, filter.selectCount)
+            .toSorted(([, i1], [, i2]) => i1 - i2)
+            .map(([pi]) => pi);
+    } else {
+      return items;
     }
     return data.not ? items.filter((pi, i) => !run(pi, i)) : items.filter(run);
   } else {
-    return items;
-    // return items.toSorted((a, b));
+    if ("cols" in data.order) {
+      const cols = data.order.cols;
+      const sort = (a: PlaylistItem, b: PlaylistItem) => {
+        return cols.reduce((p, k) => {
+          p *= 10;
+          if (k === "index") return p + 1;
+          if (typeof a[k] !== typeof b[k]) return p;
+          if (typeof a[k] === "object") {
+            p += a[k].getTime() - (b[k] as Date).getTime();
+          } else if (typeof a[k] === "string") {
+            p +=
+              k === "duration"
+                ? toSec(a[k]) - toSec(b[k] as string)
+                : cleanStr(a[k]).localeCompare(cleanStr(b[k] as string));
+          } else {
+            p += a[k] - (b[k] as number);
+          }
+          return p;
+        }, 0);
+      };
+      return data.rev
+        ? items.toSorted((a, b) => -sort(a, b))
+        : items.toSorted(sort);
+    } else {
+      const rng = new Random(data.order.rngSeed).uniform();
+      shuffle(rng, items);
+      if (data.rev) items.reverse();
+      return items;
+    }
   }
 };

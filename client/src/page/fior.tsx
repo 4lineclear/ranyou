@@ -5,7 +5,6 @@ import {
   Float,
   Heading,
   IconButton,
-  Input,
 } from "@chakra-ui/react";
 import { ColorModeButton } from "@/components/ui/color-mode";
 import {
@@ -21,18 +20,29 @@ import {
   PlItemKeys,
   IsolatedKeys,
   PlItemData,
+  SortBy,
+  Randomize,
+  RandomSelect,
 } from "@/lib/fior";
-import { Button, ButtonProps } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   MenuContent,
   MenuItem,
   MenuRoot,
   MenuTrigger,
 } from "@/components/ui/menu";
+import {
+  DrawerBackdrop,
+  DrawerBody,
+  DrawerContent,
+  DrawerHeader,
+  DrawerRoot,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 
-import { LuMenu, LuEllipsis, LuCheck } from "react-icons/lu";
+import { LuMenu, LuEllipsis, LuCheck, LuPlus, LuList, LuRefreshCw, LuPlay } from "react-icons/lu";
 
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 import {
   createContext,
@@ -47,8 +57,17 @@ import { v4 } from "uuid";
 import { Status } from "@/components/ui/status";
 import RecordsContext from "@/AppContext";
 import { EmptyState } from "@/components/ui/empty-state";
-import { InputGroup } from "@/components/ui/input-group";
 import TimeField from "react-simple-timefield";
+import { Tag } from "@/components/ui/tag";
+import { PlaylistItem } from "ranyou-shared/src";
+import { Virtuoso } from "react-virtuoso";
+
+import iso8601, { Duration } from "iso8601-duration";
+import {
+  NumberInputField,
+  NumberInputRoot,
+} from "@/components/ui/number-input";
+import { randomString } from "@/lib/random";
 
 const FiorContext = createContext<{
   items: FiorData;
@@ -67,36 +86,43 @@ const SaveContext = createContext<{
   save: () => { },
 });
 
-type RCProps = Column & Row;
-type Column = {
-  column: string;
+// type RCProps = Column & Row;
+// type Column = {
+//   column: string;
+// };
+// type Row = {
+//   column: string;
+//   row: string;
+// };
+
+const saveData = (data: FiorData) => {
+  localStorage.setItem("fiorData", JSON.stringify(data));
 };
-type Row = {
-  row: string;
+// TODO: handle malformed data
+const loadData = (): FiorData => {
+  const stored = localStorage.getItem("fiorData");
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {
+      saveData({ columns: {} });
+    }
+  }
+  return { columns: {} };
 };
 
-const FiorButton = (props: ButtonProps) => {
-  return (
-    <Button
-      bg="bg.emphasized"
-      _active={{ bg: "bg.subtle" }}
-      color="fg"
-      {...props}
-    />
-  );
-};
+// const FiorButton = (props: ButtonProps) => {
+//   return (
+//     <Button
+//       variant="surface"
+//       {...props}
+//     />
+//   );
+// };
 
 type StatusValue = "success" | "error" | "warning" | "info";
 
-const SearchRow = ({
-  not,
-  search,
-  reloadRow,
-}: {
-  not?: boolean;
-  search: Search;
-  reloadRow: () => void;
-}) => {
+const SearchRow = ({ not, search }: { not?: boolean; search: Search }) => {
   const { save } = useContext(SaveContext);
   const [regexStatus, setRegexStatus] = useState<StatusValue>("success");
   const timer = useRef<Timer>();
@@ -138,7 +164,6 @@ const SearchRow = ({
             search.search = e.value;
             clearTimeout(timer.current);
             timer.current = setTimeout(checkRegex, 500);
-            reloadRow();
           }}
           width="full"
           border="solid 2px var(--chakra-colors-bg-emphasized)"
@@ -323,16 +348,195 @@ const CheckRow = ({ not, check }: { not?: boolean; check: Predicate }) => {
   );
 };
 
+const OrderRow = ({ sort, rev }: { sort: SortBy; rev?: boolean }) => {
+  const { save } = useContext(SaveContext);
+  // const [cols, setCols] = useState<[Key, boolean][]>(() => PlItemKeys.map(k => [k, false]));
+  const [cols, setCols] = useState<Key[]>(() =>
+    PlItemKeys.filter((k) => sort.cols?.includes(k) ?? false),
+  );
+  return (
+    <Box gap="2" w="full">
+      <Heading size="sm" mb="2">
+        {rev && "Reverse "}Sort
+      </Heading>
+      <Flex wrap="wrap" gap="1">
+        {cols.map((k, i) => (
+          <Tag
+            p="2"
+            key={k}
+            size="lg"
+            closable
+            onClose={() => {
+              cols.splice(i, 1);
+              setCols([...cols]);
+              sort.cols = cols;
+              save();
+            }}
+            variant="outline"
+          >
+            {k}
+          </Tag>
+        ))}
+        <MenuRoot closeOnSelect={false}>
+          <MenuTrigger asChild>
+            <IconButton variant="outline" h="inherit" minH="36px">
+              <LuPlus />
+            </IconButton>
+          </MenuTrigger>
+          <MenuContent minW="0">
+            {PlItemKeys.filter((k) => !cols.includes(k)).map((k) => (
+              <MenuItem
+                key={k}
+                value={k}
+                justifyContent="center"
+                onClick={() => {
+                  cols.push(k as Key);
+                  setCols([...cols]);
+                  sort.cols = cols;
+                  save();
+                }}
+              >
+                {k}
+              </MenuItem>
+            ))}
+          </MenuContent>
+        </MenuRoot>
+      </Flex>
+    </Box>
+  );
+};
+
+const RandomizeRow = ({
+  random,
+  rev,
+}: {
+  random: Randomize;
+  rev?: boolean;
+}) => {
+  const { save } = useContext(SaveContext);
+  const [rng, setRng] = useState(random.rngSeed);
+  return (
+    <Box gap="2" w="full">
+      <Heading size="sm" mb="2">
+        {rev && "Reverse "}Randomize
+      </Heading>
+      <Box
+        border="solid 1px var(--chakra-colors-bg-emphasized)"
+        rounded="sm"
+      >
+        <Flex wrap="wrap" gap="1">
+          <Editable.Root
+            value={rng}
+            onValueChange={(r) => {
+              setRng(r.value);
+              random.rngSeed = r.value;
+              save();
+            }}
+            size="lg"
+          >
+            <Editable.Preview />
+            <Editable.Input />
+            <Editable.Control ms="auto" onClick={() => {
+              const r = randomString();
+              setRng(r);
+              random.rngSeed = r;
+              save();
+
+            }}>
+              <IconButton variant="ghost">
+                <LuRefreshCw />
+              </IconButton>
+            </Editable.Control>
+          </Editable.Root>
+        </Flex>
+      </Box>
+    </Box>
+  );
+};
+
+const RandomSelectRow = ({
+  not,
+  random,
+}: {
+  not?: boolean;
+  random: RandomSelect;
+}) => {
+  const { save } = useContext(SaveContext);
+  const [rng, setRng] = useState(random.rngSeed);
+  const [count, setCount] = useState(random.selectCount.toString());
+  return (
+    <Box gap="2" w="full">
+      <Heading size="sm" mb="2">
+        {not && "Exclude "}Random Select
+      </Heading>
+      <Flex wrap="wrap" gap="2%">
+        <NumberInputRoot
+          w="49%"
+          value={count}
+          onValueChange={(v) => {
+            const n = parseInt(v.value);
+            if (isNaN(n)) return;
+            random.selectCount = n;
+            setCount(v.value);
+            save();
+          }}
+          h="full"
+        >
+          <NumberInputField
+            mb="0"
+          />
+        </NumberInputRoot>
+        <Box
+          w="49%"
+          border="solid 1px var(--chakra-colors-bg-emphasized)"
+          rounded="sm"
+        >
+          <Editable.Root
+            value={rng}
+            onValueChange={(r) => {
+              setRng(r.value);
+              random.rngSeed = r.value;
+              save();
+            }}
+          >
+            <Editable.Preview>
+            </Editable.Preview>
+            <Editable.Input />
+            <Editable.Control ms="auto" onClick={() => {
+              const r = randomString();
+              setRng(r);
+              random.rngSeed = r;
+              save();
+
+            }}>
+              <IconButton variant="ghost">
+                <LuRefreshCw />
+              </IconButton>
+            </Editable.Control>
+          </Editable.Root>
+        </Box>
+      </Flex>
+    </Box>
+  );
+};
+
+// TODO: add random selection
+
 const EditorRow = ({
   column,
   row,
   reloadRows,
-}: { reloadRows: () => void } & RCProps) => {
+}: {
+  reloadRows: () => void;
+  column: string;
+  row: string;
+}) => {
   const { items } = useContext(FiorContext);
   const { save } = useContext(SaveContext);
   const [rowItem, setRowItem] = useState(items.columns[column].rows[row]);
   const reloadRow = () => {
     setRowItem({ ...rowItem });
+    items.columns[column].rows[row] = rowItem;
     save();
   };
   return (
@@ -345,22 +549,17 @@ const EditorRow = ({
       position="relative"
     >
       {"order" in rowItem ? (
-        <>
-          <span>order</span>
-          {rowItem.order.cols.join(" ")}
-        </>
+        "cols" in rowItem.order ? (
+          <OrderRow sort={rowItem.order} rev={rowItem.rev} />
+        ) : (
+          <RandomizeRow random={rowItem.order} rev={rowItem.rev} />
+        )
       ) : "search" in rowItem.filter ? (
-        <SearchRow
-          search={rowItem.filter}
-          reloadRow={reloadRow}
-          not={rowItem.not}
-        />
+        <SearchRow search={rowItem.filter} not={rowItem.not} />
+      ) : "rngSeed" in rowItem.filter ? (
+        <RandomSelectRow random={rowItem.filter} not={rowItem.not} />
       ) : (
-        <CheckRow
-          check={rowItem.filter}
-          // reloadRow={reloadRow}
-          not={rowItem.not}
-        />
+        <CheckRow check={rowItem.filter} not={rowItem.not} />
       )}
       <MenuRoot>
         <MenuTrigger ms="auto" asChild>
@@ -370,9 +569,8 @@ const EditorRow = ({
             </IconButton>
           </Float>
         </MenuTrigger>
-
         <MenuContent>
-          {"filter" in rowItem && (
+          {"filter" in rowItem ? (
             <>
               {"regex" in rowItem.filter && (
                 <MenuItem
@@ -406,6 +604,21 @@ const EditorRow = ({
                 )}
               </MenuItem>
             </>
+          ) : (
+            <MenuItem
+              value="reverse"
+              onClick={() => {
+                rowItem.rev = !rowItem.rev;
+                reloadRow();
+              }}
+            >
+              Reverse
+              {rowItem.rev && (
+                <Box ms="auto">
+                  <LuCheck />
+                </Box>
+              )}
+            </MenuItem>
           )}
           <MenuItem
             value="delete"
@@ -430,9 +643,14 @@ const EditorColumn = ({
   reloadColumns,
 }: {
   reloadColumns: () => void;
-} & Column) => {
+  column: string;
+}) => {
+  const [, navigate] = useLocation();
   const [rowOutput, setRowOutput] = useState(0);
   const [fiorStatus, setFiorStatus] = useState<StatusValue>("success");
+  const [playlistItems, setPlaylistItems] = useState<
+    Record<string, PlaylistItem[]>
+  >({});
   const { items, saveData, playlistData } = useContext(FiorContext);
   const { records } = useContext(RecordsContext);
   const colItem = items.columns[column];
@@ -442,9 +660,10 @@ const EditorColumn = ({
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       if (typeof playlistData !== "string") {
-        const o = columnQuery({ data: colItem, playlists: playlistData });
-        setRowOutput(Object.values(o).reduce((n, pi) => n + pi.length, 0));
+        const newPI = columnQuery({ data: colItem, playlists: playlistData });
+        setRowOutput(Object.values(newPI).reduce((n, pi) => n + pi.length, 0));
         setFiorStatus("success");
+        setPlaylistItems(newPI);
         // console.log(Object.values(o)[0].map(pi => pi.duration));
         // Object.values(o)
         //   .flatMap((pi) => pi)
@@ -569,7 +788,9 @@ const EditorColumn = ({
         <Flex gap="1">
           <MenuRoot positioning={{ sameWidth: true }}>
             <MenuTrigger asChild>
-              <FiorButton flexGrow="1">+Filter</FiorButton>
+              <Button variant="surface" flexGrow="1">
+                +Filter
+              </Button>
             </MenuTrigger>
             <MenuContent>
               <MenuItem
@@ -602,38 +823,158 @@ const EditorColumn = ({
               >
                 +Check
               </MenuItem>
+              <MenuItem
+                value="random-select"
+                onClick={() => {
+                  addRow({
+                    filter: {
+                      cols: [],
+                      rngSeed: randomString(),
+                      selectCount: 0,
+                    },
+                    index: Object.keys(rows).length,
+                  });
+                }}
+              >
+                +Random Select
+              </MenuItem>
             </MenuContent>
           </MenuRoot>
-          <FiorButton
-            flexGrow="1"
-            onClick={() => {
-              addRow({
-                order: {
-                  cols: [],
-                },
-                index: Object.keys(rows).length,
-              });
-            }}
-          >
-            +Order
-          </FiorButton>
+          <MenuRoot positioning={{ sameWidth: true }}>
+            <MenuTrigger asChild>
+              <Button variant="surface" flexGrow="1">
+                +Order
+              </Button>
+            </MenuTrigger>
+            <MenuContent>
+              <MenuItem
+                value="sort"
+                onClick={() => {
+                  addRow({
+                    order: {
+                      cols: [],
+                    },
+                    index: Object.keys(rows).length,
+                  });
+                }}
+              >
+                +Sort
+              </MenuItem>
+              <MenuItem
+                value="random"
+                onClick={() => {
+                  addRow({
+                    order: {
+                      rngSeed: randomString(),
+                    },
+                    index: Object.keys(rows).length,
+                  });
+                }}
+              >
+                +Random
+              </MenuItem>
+            </MenuContent>
+          </MenuRoot>
         </Flex>
-        <Flex
+        <Box
           mt="auto"
           w="full"
-          p="2"
-          justifyContent="center"
+          position="relative"
           bg="bg.emphasized"
           rounded="sm"
-          position="relative"
         >
-          Rows: {rowOutput}
+          <Flex justifyContent="space-between" alignItems="center">
+            <IconButton variant="surface" m="1" onClick={() => {
+              navigate(`/play/${Object.keys(playlistItems).join('')}/`);
+            }}>
+              <LuPlay />
+            </IconButton>
+            Rows: {rowOutput}
+            <ListDrawer
+              title={colItem.name}
+              items={Object.values(playlistItems).flatMap((pi) => pi)}
+            />
+          </Flex>
           <Float>
             <Status value={fiorStatus} />
           </Float>
-        </Flex>
+        </Box>
       </Flex>
     </SaveContext.Provider>
+  );
+};
+
+type ShownItem = PlaylistItem & {
+  index: number;
+};
+
+const toShownItem = (pi: PlaylistItem, index: number): ShownItem => ({
+  ...pi,
+  index,
+});
+
+const displayDuration = (d: Duration) => {
+  const dMS = d.minutes + ":" + d.seconds?.toString().padStart(2, "0");
+  return d.hours ? d.hours + ":" + dMS.padStart(5, "0") : dMS;
+};
+
+const parseDuration = (s: string) => {
+  try {
+    return iso8601.parse(s);
+  } catch {
+    return undefined;
+  }
+};
+
+const ItemRow = ({ index, item }: { index: number; item: ShownItem }) => {
+  const duration = parseDuration(item.duration);
+  if (!duration) return;
+  const durationStr = displayDuration(duration);
+  return (
+    <>
+      <Flex
+        cursor="pointer"
+        key={index}
+        p="3"
+        justifyContent="space-between"
+        borderY="1px solid gray"
+        _active={{
+          backgroundColor: "gray.emphasized",
+          backgroundImage: "none",
+        }}
+      >
+        <span>{item.title}</span>
+        <span>{durationStr}</span>
+      </Flex>
+    </>
+  );
+};
+
+const ListDrawer = ({
+  title,
+  items,
+}: {
+  title: string;
+  items: PlaylistItem[];
+}) => {
+  return (
+    <DrawerRoot size="md">
+      <DrawerTrigger asChild>
+        <IconButton variant="surface" m="1">
+          <LuList />
+        </IconButton>
+      </DrawerTrigger>
+      <DrawerBackdrop />
+      <DrawerContent>
+        <DrawerHeader>{"Inspecting '" + title + "' output."}</DrawerHeader>
+        <DrawerBody>
+          <Virtuoso
+            data={items.map(toShownItem)}
+            itemContent={(i, d) => <ItemRow index={i} item={d} />}
+          />
+        </DrawerBody>
+      </DrawerContent>
+    </DrawerRoot>
   );
 };
 
@@ -663,25 +1004,15 @@ const EditorGrid = ({
   );
 };
 
+// TODO: move header to be it's own component
+
 // TODO: consider moving from uuids to user-set names for columns
 
 // TODO: setup proper record & item provider
 
-const saveData = (data: FiorData) => {
-  localStorage.setItem("fiorData", JSON.stringify(data));
-};
-// TODO: handle malformed data
-const loadData = (): FiorData => {
-  const stored = localStorage.getItem("fiorData");
-  if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch {
-      saveData({ columns: {} });
-    }
-  }
-  return { columns: {} };
-};
+// TODO: implement DRY
+
+// TODO: break up this file
 
 const Fior = () => {
   const { records } = useContext(RecordsContext);
@@ -718,7 +1049,8 @@ const Fior = () => {
           <ColorModeButton marginStart="auto" />
         </Flex>
         <Box>
-          <FiorButton
+          <Button
+            variant="surface"
             onClick={() => {
               let i = Object.values(items.columns)
                 .filter(
@@ -740,7 +1072,7 @@ const Fior = () => {
             }}
           >
             +Column
-          </FiorButton>
+          </Button>
         </Box>
         <Box h="vh">
           <EditorGrid columns={columns} reloadColumns={reloadColumns} />
