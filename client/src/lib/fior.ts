@@ -8,6 +8,8 @@ import iso8601, { Duration } from "iso8601-duration";
 import { shuffle } from "./random";
 import { Random } from "random";
 
+export type StatusValue = "success" | "error" | "warning" | "info";
+
 export type Index = { index: number };
 
 export type FiorData = {
@@ -161,17 +163,20 @@ export const columnQuery = ({
   data: FiorColumn;
   playlists: PlaylistData;
 }) => {
+  console.log(data);
   const output: Record<string, PlaylistItem[]> = {};
   for (const [pr, pi] of data.records
     .filter((k) => playlists[k])
     .map((k) => playlists[k])) {
     const itemRecord = [pi];
     for (const row of Object.values(data.rows).toSorted(cmpIndex)) {
+      console.log(row);
       itemRecord.push(
         rowQuery({ data: row, items: itemRecord[itemRecord.length - 1] }),
       );
     }
     output[pr.playlist_id] = itemRecord[itemRecord.length - 1];
+    console.log(itemRecord);
   }
   return output;
 };
@@ -238,7 +243,7 @@ export const rowQuery = ({
         );
       };
     } else if ("rngSeed" in filter) {
-      if (filter.selectCount >= items.length || filter.selectCount === 0)
+      if (filter.selectCount >= items.length || filter.selectCount <= 0)
         return items;
       const rng = new Random(filter.rngSeed).uniform();
       const randomItems: [PlaylistItem, number][] = items.map((pi, i) => [
@@ -246,15 +251,15 @@ export const rowQuery = ({
         i,
       ]);
       shuffle(rng, randomItems);
-      return data.not
-        ? randomItems
-            .splice(filter.selectCount)
-            .toSorted(([, i1], [, i2]) => i1 - i2)
-            .map(([pi]) => pi)
-        : randomItems
-            .splice(0, filter.selectCount)
-            .toSorted(([, i1], [, i2]) => i1 - i2)
-            .map(([pi]) => pi);
+      console.log(
+        randomItems
+          .slice(0, filter.selectCount)
+          .toSorted(([, i1], [, i2]) => i1 - i2),
+      );
+      const sliced = data.not
+        ? randomItems.slice(filter.selectCount)
+        : randomItems.slice(0, filter.selectCount);
+      return sliced.toSorted(([, i1], [, i2]) => i1 - i2).map(([pi]) => pi);
     } else {
       return items;
     }

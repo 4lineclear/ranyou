@@ -24,7 +24,7 @@ import RecordsContext from "@/AppContext";
 import { fetchItems, fetchRecords, PlaylistItem } from "@/lib/youtube";
 
 import iso8601, { Duration } from "iso8601-duration";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import { Toaster, toaster } from "@/components/ui/toaster";
 import {
@@ -51,7 +51,7 @@ const PlayContext = createContext<IPlayContext>({
   playlistId: "",
   items: [],
   itemIndex: 0,
-  setItemIndex: () => {},
+  setItemIndex: () => { },
 });
 
 // import { randomString } from "@/lib/random";
@@ -92,6 +92,32 @@ const toShownItem = (pi: PlaylistItem, index: number): ShownItem => ({
 const displayDuration = (d: Duration) => {
   const dMS = d.minutes + ":" + d.seconds?.toString().padStart(2, "0");
   return d.hours ? d.hours + ":" + dMS.padStart(5, "0") : dMS;
+};
+
+// function getQueryVariable(variable: string) {
+//   const query = window.location.search.substring(1);
+//   const vars = query.split("&");
+//   for (let i = 0; i < vars.length; i++) {
+//     const pair = vars[i].split("=");
+//     if (decodeURIComponent(pair[0]) == variable) {
+//       return decodeURIComponent(pair[1]);
+//     }
+//   }
+//   console.log("Query variable %s not found", variable);
+// }
+
+const useGetQuery = (v: string): [string | undefined] => {
+  const queryString = useSearch();
+  const [query, setQuery] = useState<string>();
+  useEffect(() => {
+    const vars = queryString.split("&");
+    for (let i = 0; i < vars.length; i++) {
+      const pair = vars[i].split("=");
+      if (decodeURIComponent(pair[0]) == v)
+        setQuery(decodeURIComponent(pair[1]));
+    }
+  }, [queryString, v]);
+  return [query];
 };
 
 const ItemRow = ({
@@ -248,7 +274,7 @@ const Player = () => {
           type: "error",
           action: {
             label: "close",
-            onClick: () => {},
+            onClick: () => { },
           },
         });
         navigate(`/play/${playlistId}/${itemIndex + 1}`);
@@ -273,7 +299,12 @@ const Crumbs = () => {
         </MenuTrigger>
         <MenuContent>
           {Object.values(records).map((pr) => (
-            <MenuItem cursor="pointer" value={pr.playlist_id} asChild>
+            <MenuItem
+              key={pr.playlist_id}
+              cursor="pointer"
+              value={pr.playlist_id}
+              asChild
+            >
               <Link href={"/play/" + pr.playlist_id}>{pr.title}</Link>
             </MenuItem>
           ))}
@@ -292,6 +323,8 @@ const PlayPage = ({
   initItemIndex: number;
   playlistId: string;
 }) => {
+  const fior = useGetQuery("fior");
+  useEffect(() => console.log(fior), [fior]);
   const [itemIndex, setItemIndex] = useState(initItemIndex - 1);
   const [durationInfo, setDurationInfo] = useState({ max: 0, mean: 0 });
   const [loading, setLoading] = useState<"loading" | "loaded" | "failed">(
