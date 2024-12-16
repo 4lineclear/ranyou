@@ -28,8 +28,9 @@ export const writeLocalRecords = (records: PlaylistRecords) => {
 
 export const fetchRecords = async (
   playlistId: string,
+  opts?: RequestInit,
 ): Promise<PlaylistRecord | Response> => {
-  const res = await fetch("/api/playlist-record/" + playlistId);
+  const res = await fetch("/api/playlist-record/" + playlistId, opts);
   if (res.status === 200) {
     const json: PlaylistRecord = await res.json();
     json.published_at = new Date(json.published_at);
@@ -40,7 +41,8 @@ export const fetchRecords = async (
 
 export const fetchItems = async (
   playlistId: string,
+  opts?: RequestInit,
 ): Promise<PlaylistItem[]> => {
-  const res = await fetch("/api/playlist-items/" + playlistId);
+  const res = await fetch("/api/playlist-items/" + playlistId, opts);
   return await res.json();
 };

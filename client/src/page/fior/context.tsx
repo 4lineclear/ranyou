@@ -9,13 +9,6 @@ export const FiorContext = createContext<{
   items: {
     columns: {},
   },
-  saveData: () => { },
+  saveData: () => {},
   playlistData: "unloaded",
 });
-
-export const SaveContext = createContext<{
-  save: () => void;
-}>({
-  save: () => { },
-});
-

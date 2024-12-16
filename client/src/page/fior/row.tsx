@@ -26,21 +26,9 @@ import {
   MenuRoot,
   MenuTrigger,
 } from "@/components/ui/menu";
-import {
-  LuEllipsis,
-  LuCheck,
-  LuPlus,
-  LuRefreshCw,
-} from "react-icons/lu";
+import { LuEllipsis, LuCheck, LuPlus, LuRefreshCw } from "react-icons/lu";
 
-
-import {
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { Status } from "@/components/ui/status";
 import TimeField from "react-simple-timefield";
@@ -51,7 +39,8 @@ import {
   NumberInputRoot,
 } from "@/components/ui/number-input";
 import { randomString } from "@/lib/random";
-import { FiorContext, SaveContext } from "./context";
+import { FiorContext } from "./context";
+import { ColumnContext } from "./column/context";
 
 const Row = ({
   title,
@@ -71,7 +60,7 @@ const Row = ({
 };
 
 const SearchRow = ({ not, search }: { not?: boolean; search: Search }) => {
-  const { save } = useContext(SaveContext);
+  const { save } = useContext(ColumnContext);
   const [regexStatus, setRegexStatus] = useState<StatusValue>("success");
   const timer = useRef<Timer>();
   const checkRegex = () => {
@@ -153,7 +142,7 @@ const SearchRow = ({ not, search }: { not?: boolean; search: Search }) => {
 };
 
 const CheckRow = ({ not, check }: { not?: boolean; check: Predicate }) => {
-  const { save } = useContext(SaveContext);
+  const { save } = useContext(ColumnContext);
   const [value, setValue] = useState(useMemo(() => check.value, [check]));
   const [operator, setOperator] = useState(check.operator);
   const [cols, setCols] = useState<IsolatedKeys | undefined>(() => check.cols);
@@ -301,7 +290,7 @@ const CheckRow = ({ not, check }: { not?: boolean; check: Predicate }) => {
 };
 
 const OrderRow = ({ sort, rev }: { sort: SortBy; rev?: boolean }) => {
-  const { save } = useContext(SaveContext);
+  const { save } = useContext(ColumnContext);
   const [cols, setCols] = useState<Key[]>(() =>
     PlItemKeys.filter((k) => sort.cols?.includes(k) ?? false),
   );
@@ -361,7 +350,7 @@ const RandomizeRow = ({
   random: Randomize;
   rev?: boolean;
 }) => {
-  const { save } = useContext(SaveContext);
+  const { save } = useContext(ColumnContext);
   const [rng, setRng] = useState(random.rngSeed);
   return (
     <Row title={rev ? "Reverse Randomize" : "Randomize"}>
@@ -405,7 +394,7 @@ const RandomSelectRow = ({
   not?: boolean;
   random: RandomSelect;
 }) => {
-  const { save } = useContext(SaveContext);
+  const { save } = useContext(ColumnContext);
   const [rng, setRng] = useState(random.rngSeed);
   const [count, setCount] = useState(random.selectCount.toString());
   return (
@@ -472,7 +461,7 @@ const EditorRow = ({
   reloadRows: () => void;
 }) => {
   const { items } = useContext(FiorContext);
-  const { save } = useContext(SaveContext);
+  const { save } = useContext(ColumnContext);
   const [rowItem, setRowItem] = useState(items.columns[column].rows[row]);
   const reloadRow = () => {
     setRowItem({ ...rowItem });
@@ -501,6 +490,9 @@ const EditorRow = ({
       ) : (
         <CheckRow check={rowItem.filter} not={rowItem.not} />
       )}
+      {/* TODO: break this up into the seperate row componenets
+                Probably best to move generic version to row.
+      */}
       <MenuRoot>
         <MenuTrigger ms="auto" asChild>
           <Float offset="4">
@@ -516,8 +508,8 @@ const EditorRow = ({
                 <MenuItem
                   value="regex"
                   onClick={() => {
-                    if ("regex" in rowItem.filter)
-                      rowItem.filter.regex = !rowItem.filter.regex;
+                    if (!("regex" in rowItem.filter)) return;
+                    rowItem.filter.regex = !rowItem.filter.regex;
                     reloadRow();
                   }}
                 >

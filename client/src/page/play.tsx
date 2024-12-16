@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Spinner,
   Text,
@@ -20,7 +27,7 @@ import { ColorModeButton } from "@/components/ui/color-mode";
 import ReactPlayer from "react-player";
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
 
-import RecordsContext from "@/AppContext";
+import RecordsContext from "@/app-context";
 import { fetchItems, fetchRecords, PlaylistItem } from "@/lib/youtube";
 
 import iso8601, { Duration } from "iso8601-duration";
@@ -39,9 +46,12 @@ import {
   MenuTrigger,
 } from "@/components/ui/menu";
 import { LuChevronDown } from "react-icons/lu";
+import { columnQuery, loadFior } from "@/lib/fior";
 
 export interface IPlayContext {
   playlistId: string;
+  /** 0 based index */
+  gotoIndex: (i: number) => void;
   items: PlaylistItem[];
   itemIndex: number;
   setItemIndex: (n: number) => void;
@@ -49,9 +59,10 @@ export interface IPlayContext {
 
 const PlayContext = createContext<IPlayContext>({
   playlistId: "",
+  gotoIndex: () => {},
   items: [],
   itemIndex: 0,
-  setItemIndex: () => { },
+  setItemIndex: () => {},
 });
 
 // import { randomString } from "@/lib/random";
@@ -106,9 +117,9 @@ const displayDuration = (d: Duration) => {
 //   console.log("Query variable %s not found", variable);
 // }
 
-const useGetQuery = (v: string): [string | undefined] => {
+const useGetQuery = (v: string): [string | null] => {
   const queryString = useSearch();
-  const [query, setQuery] = useState<string>();
+  const [query, setQuery] = useState<string | null>(null);
   useEffect(() => {
     const vars = queryString.split("&");
     for (let i = 0; i < vars.length; i++) {
@@ -131,8 +142,7 @@ const ItemRow = ({
   durationStat: number;
   virtuoso: React.RefObject<VirtuosoHandle>;
 }) => {
-  const [, navigate] = useLocation();
-  const { playlistId, itemIndex, items } = useContext(PlayContext);
+  const { itemIndex, items, gotoIndex } = useContext(PlayContext);
   const duration = iso8601.parse(item.duration);
   const durationStr = displayDuration(duration);
   const durationS = iso8601.toSeconds(duration);
@@ -151,33 +161,28 @@ const ItemRow = ({
     bgImage = "none";
   }
   return (
-    <>
-      <Flex
-        cursor="pointer"
-        key={index}
-        p="3"
-        justifyContent="space-between"
-        borderY="1px solid gray"
-        backgroundImage={bgImage}
-        color={fgColor}
-        backgroundColor={bgColor}
-        _active={{
-          backgroundColor: "gray.emphasized",
-          backgroundImage: "none",
-        }}
-        onClick={() => {
-          navigate(`/play/${playlistId}/${item.index + 1}`);
-          const behavior =
-            Math.abs(index - itemIndex) < items.length / 100
-              ? "smooth"
-              : "auto";
-          virtuoso.current?.scrollToIndex({ index: index, behavior });
-        }}
-      >
-        <span>{item.title}</span>
-        <span>{durationStr}</span>
-      </Flex>
-    </>
+    <Flex
+      p="3"
+      cursor="pointer"
+      justifyContent="space-between"
+      borderY="1px solid gray"
+      backgroundImage={bgImage}
+      color={fgColor}
+      backgroundColor={bgColor}
+      _active={{
+        backgroundColor: "gray.emphasized",
+        backgroundImage: "none",
+      }}
+      onClick={() => {
+        gotoIndex(item.index);
+        const behavior =
+          Math.abs(index - itemIndex) < items.length / 100 ? "smooth" : "auto";
+        virtuoso.current?.scrollToIndex({ index: index, behavior });
+      }}
+    >
+      <span>{item.title}</span>
+      <span>{durationStr}</span>
+    </Flex>
   );
 };
 
@@ -204,6 +209,8 @@ const SearchList = ({
       if (sd && search(v.description)) return true;
       return false;
     });
+
+  // NOTE: can use timer here in case performance is lacking
   return (
     <>
       <Input
@@ -243,8 +250,7 @@ const SearchList = ({
 
 const Player = () => {
   const [playing, setPlaying] = useState(false);
-  const [, navigate] = useLocation();
-  const { playlistId, items, itemIndex } = useContext(PlayContext);
+  const { items, itemIndex, gotoIndex } = useContext(PlayContext);
   if (items.length <= itemIndex)
     return (
       <Center h="full">
@@ -267,17 +273,17 @@ const Player = () => {
       width="100%"
       height="100%"
       onPlay={() => setPlaying(true)}
-      onEnded={() => navigate(`/play/${playlistId}/${itemIndex + 2}`)}
+      onEnded={() => gotoIndex(itemIndex)}
       onError={() => {
         toaster.create({
           title: "error playing video",
           type: "error",
           action: {
             label: "close",
-            onClick: () => { },
+            onClick: () => {},
           },
         });
-        navigate(`/play/${playlistId}/${itemIndex + 1}`);
+        gotoIndex(itemIndex);
       }}
     />
   );
@@ -315,6 +321,67 @@ const Crumbs = () => {
   );
 };
 
+const calcDurationInfo = (items: PlaylistItem[]) => {
+  let max = 0;
+  let total = 0;
+  for (const item of items) {
+    const n = iso8601.toSeconds(iso8601.parse(item.duration));
+    max = n > max ? n : max;
+    total += n;
+  }
+  const mean = total / items.length;
+  return { max, mean };
+};
+
+const useItems = (playlistId: string) => {
+  const [durationInfo, setDurationInfo] = useState({ max: 0, mean: 0 });
+  const [loading, setLoading] = useState<"loading" | "loaded" | "failed">(
+    "loading",
+  );
+  const { records, addRecord } = useContext(RecordsContext);
+  const [fiorParam] = useGetQuery("fior");
+  const fiorColumn = useMemo(
+    () => (fiorParam ? loadFior().columns[fiorParam] : null),
+    [fiorParam],
+  );
+  const [original, setOriginal] = useState<PlaylistItem[]>([]);
+  const [shownItems, setShownItems] = useState<ShownItem[]>([]);
+
+  // TODO: add useEffect cancellations using AbortController
+  // to reduce data races.
+  useEffect(() => {
+    const ac = new AbortController();
+    if (!records[playlistId]) {
+      fetchRecords(playlistId, { signal: ac.signal }).then((record) => {
+        if (!(record instanceof Response)) addRecord(record);
+      });
+    }
+    fetchItems(playlistId, { signal: ac.signal })
+      .then((items) => {
+        setDurationInfo(calcDurationInfo(items));
+        setOriginal(items);
+        setLoading("loaded");
+      })
+      .catch((e) => {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setLoading("failed");
+      });
+    return () => ac.abort();
+  }, [playlistId, records, addRecord]);
+  const items: PlaylistItem[] = useMemo(() => {
+    if (fiorColumn)
+      return columnQuery({
+        data: fiorColumn,
+        playlists: {
+          [playlistId]: [records[playlistId], original.slice()],
+        },
+      })[playlistId];
+    return original.slice();
+  }, [fiorColumn, original, playlistId, records]);
+  useEffect(() => setShownItems(items.map(toShownItem)), [items]);
+  return { loading, items, durationInfo, shownItems, setShownItems };
+};
+
 // TODO: make init item index optional
 const PlayPage = ({
   initItemIndex,
@@ -323,60 +390,31 @@ const PlayPage = ({
   initItemIndex: number;
   playlistId: string;
 }) => {
-  const fior = useGetQuery("fior");
-  useEffect(() => console.log(fior), [fior]);
+  const [, navigate] = useLocation();
+  const [fiorParam] = useGetQuery("fior");
+  const fiorColumn = useMemo(
+    () => (fiorParam ? loadFior().columns[fiorParam] : null),
+    [fiorParam],
+  );
   const [itemIndex, setItemIndex] = useState(initItemIndex - 1);
-  const [durationInfo, setDurationInfo] = useState({ max: 0, mean: 0 });
-  const [loading, setLoading] = useState<"loading" | "loaded" | "failed">(
-    "loading",
-  );
-  const [items, setItems] = useState<PlaylistItem[]>([]);
-  const [shownItems, setShownItems] = useState<ShownItem[]>(
-    items.map(toShownItem),
-  );
-  const { records, addRecord } = useContext(RecordsContext);
+  const { loading, items, durationInfo, shownItems, setShownItems } =
+    useItems(playlistId);
 
   const virtuoso = useRef<VirtuosoHandle>(null);
+  const gotoIndex = (i: number) => {
+    setItemIndex(i);
+    const fParam = fiorParam ? `?fior=${fiorParam}` : "";
+    navigate(`/play/${playlistId}/${++i}` + fParam);
+  };
 
-  const playProvider = {
-    playlistId: playlistId,
-    items: items,
-    itemIndex: itemIndex,
-    setItemIndex: setItemIndex,
-  } satisfies IPlayContext;
-
-  useEffect(() => {
-    setItemIndex(initItemIndex - 1);
-  }, [initItemIndex]);
-  useEffect(() => {
-    if (!records[playlistId]) {
-      fetchRecords(playlistId)
-        .then((record) => {
-          if (record instanceof Response) return;
-          addRecord(record);
-        })
-        .catch(console.log);
-    }
-    fetchItems(playlistId)
-      .then((items) => {
-        let max = 0;
-        let total = 0;
-        for (const item of items) {
-          const n = iso8601.toSeconds(iso8601.parse(item.duration));
-          max = n > max ? n : max;
-          total += n;
-        }
-        const mean = total / items.length;
-        setDurationInfo({ max, mean });
-        setItems(items);
-        setShownItems(items.map(toShownItem));
-        setLoading("loaded");
-      })
-      .catch((e) => {
-        console.log(e);
-        setLoading("failed");
-      });
-  }, [playlistId, records, addRecord]);
+  const playProvider: IPlayContext = {
+    playlistId,
+    items,
+    gotoIndex,
+    itemIndex,
+    setItemIndex,
+  };
+  useEffect(() => console.log(loading), [loading]);
 
   if (loading === "failed")
     return (
@@ -420,10 +458,15 @@ const PlayPage = ({
           </Heading>
           <Crumbs />
         </GridItem>
-        <GridItem colSpan={1} display="flex" alignItems="start">
+        <GridItem colSpan={1} display="flex" alignItems="baseline">
           <Heading textStyle="xl">
             <Link href="/fior/">fior</Link>
           </Heading>
+          {fiorColumn && (
+            <Heading size="md" ms="2">
+              {fiorColumn.name}
+            </Heading>
+          )}
           <ColorModeButton marginStart="auto" />
         </GridItem>
         <GridItem colSpan={2} position="relative" aspectRatio={16 / 9}>
@@ -460,7 +503,7 @@ const PlayPage = ({
         <GridItem colSpan={1}>
           <SearchList setShownItems={setShownItems} />
         </GridItem>
-        <GridItem colSpan={3} h="100%" display="flex"></GridItem>
+        <GridItem colSpan={3} h="100%"></GridItem>
       </Grid>
       <Toaster />
     </PlayContext.Provider>

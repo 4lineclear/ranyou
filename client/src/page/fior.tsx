@@ -1,46 +1,16 @@
-import {
-  Box,
-  Flex,
-  Heading,
-} from "@chakra-ui/react";
+import { Box, Flex, Heading } from "@chakra-ui/react";
 import { ColorModeButton } from "@/components/ui/color-mode";
-import {
-  FiorData,
-  PlaylistData,
-  readPlaylistData,
-} from "@/lib/fior";
+import { loadFior, PlaylistData, readPlaylistData, saveFior } from "@/lib/fior";
 import { Button } from "@/components/ui/button";
 
 import { Link } from "wouter";
 
-import {
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 
 import { v4 } from "uuid";
-import RecordsContext from "@/AppContext";
+import RecordsContext from "@/app-context";
 import EditorColumn from "./fior/column";
 import { FiorContext } from "./fior/context";
-
-const saveData = (data: FiorData) => {
-  localStorage.setItem("fiorData", JSON.stringify(data));
-};
-
-// TODO: handle malformed data
-const loadData = (): FiorData => {
-  const stored = localStorage.getItem("fiorData");
-  if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch {
-      saveData({ columns: {} });
-    }
-  }
-  return { columns: {} };
-};
 
 // TODO: add random selection
 
@@ -84,13 +54,15 @@ const EditorGrid = ({
 
 // TODO: create proper data handling where indices are respected.
 
+// TODO: fix various data races, maybe create a Loading class.
+
 const Fior = () => {
   const { records } = useContext(RecordsContext);
-  const items = useMemo(loadData, []);
+  const items = useMemo(loadFior, []);
   const [columns, setColumns] = useState(() => Object.keys(items.columns));
   const reloadColumns = () => {
     setColumns(Object.keys(items.columns));
-    saveData(items);
+    saveFior(items);
   };
   const [playlistData, setPlaylistData] = useState<
     PlaylistData | "unloaded" | "failed"
@@ -106,7 +78,7 @@ const Fior = () => {
     <FiorContext.Provider
       value={{
         items,
-        saveData,
+        saveData: saveFior,
         playlistData,
       }}
     >

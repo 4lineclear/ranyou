@@ -1,5 +1,13 @@
-.CodeMirror {
-  height: 100%;
+.duration-input {
+  text-align: "center";
+  border: "var(--chakra-colors-bg-emphasized)";
+  background: "var(--chakra-colors-bg)";
+  color: "var(--chakra-colors-fg)";
+  width: "100%";
+  padding: "5px 8px";
+  border-radius: "var(--chakra-radii-sm)";
+  border-top-left-radius: "var(--chakra-radii-none)";
+  border-bottom-left-radius: "var(--chakra-radii-none)";
 }
 
 @keyframes fadeOut {

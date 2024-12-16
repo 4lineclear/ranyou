@@ -99,6 +99,24 @@ export const PlItemData: Record<Key, string> = {
   added_at: "date",
   published_at: "date",
 };
+
+export const saveFior = (data: FiorData) => {
+  localStorage.setItem("fiorData", JSON.stringify(data));
+};
+
+// TODO: handle malformed data
+export const loadFior = (): FiorData => {
+  const stored = localStorage.getItem("fiorData");
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {
+      saveFior({ columns: {} });
+    }
+  }
+  return { columns: {} };
+};
+
 export const PlItemKeys = Object.keys(PlItemData).map((k) => k as Key);
 
 export type Key = "index" | keyof PlaylistItem;
@@ -163,20 +181,20 @@ export const columnQuery = ({
   data: FiorColumn;
   playlists: PlaylistData;
 }) => {
-  console.log(data);
+  // console.log(data);
   const output: Record<string, PlaylistItem[]> = {};
   for (const [pr, pi] of data.records
     .filter((k) => playlists[k])
     .map((k) => playlists[k])) {
     const itemRecord = [pi];
     for (const row of Object.values(data.rows).toSorted(cmpIndex)) {
-      console.log(row);
+      // console.log(row);
       itemRecord.push(
         rowQuery({ data: row, items: itemRecord[itemRecord.length - 1] }),
       );
     }
     output[pr.playlist_id] = itemRecord[itemRecord.length - 1];
-    console.log(itemRecord);
+    // console.log(itemRecord);
   }
   return output;
 };
@@ -251,11 +269,11 @@ export const rowQuery = ({
         i,
       ]);
       shuffle(rng, randomItems);
-      console.log(
-        randomItems
-          .slice(0, filter.selectCount)
-          .toSorted(([, i1], [, i2]) => i1 - i2),
-      );
+      // console.log(
+      //   randomItems
+      //     .slice(0, filter.selectCount)
+      //     .toSorted(([, i1], [, i2]) => i1 - i2),
+      // );
       const sliced = data.not
         ? randomItems.slice(filter.selectCount)
         : randomItems.slice(0, filter.selectCount);

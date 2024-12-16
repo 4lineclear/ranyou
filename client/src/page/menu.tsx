@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { CheckboxCard } from "@/components/ui/checkbox-card";
 import { Field } from "@/components/ui/field";
 
-import RecordsContext from "@/AppContext";
+import RecordsContext from "@/app-context";
 import { fetchRecords, PlaylistRecord } from "@/lib/youtube";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LuPlay, LuTrash2 } from "react-icons/lu";

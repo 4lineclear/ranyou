@@ -1,10 +1,4 @@
-import {
-  Box,
-  Editable,
-  Flex,
-  Float,
-  IconButton,
-} from "@chakra-ui/react";
+import { Box, Editable, Flex, Float, For, IconButton } from "@chakra-ui/react";
 import {
   columnQuery,
   FiorItem,
@@ -22,36 +16,33 @@ import {
   MenuRoot,
   MenuTrigger,
 } from "@/components/ui/menu";
-import {
-  LuList,
-  LuMenu,
-  LuPlay,
-} from "react-icons/lu";
+import { LuList, LuMenu, LuPlay } from "react-icons/lu";
 
 import { useLocation } from "wouter";
 
-import {
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { v4 } from "uuid";
 import { Status } from "@/components/ui/status";
-import RecordsContext from "@/AppContext";
+import RecordsContext from "@/app-context";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PlaylistItem } from "ranyou-shared/src";
 
 import { randomString } from "@/lib/random";
 
 import iso8601, { Duration } from "iso8601-duration";
-import { DrawerBackdrop, DrawerBody, DrawerContent, DrawerHeader, DrawerRoot, DrawerTrigger } from "@/components/ui/drawer";
+import {
+  DrawerBackdrop,
+  DrawerBody,
+  DrawerContent,
+  DrawerHeader,
+  DrawerRoot,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { Virtuoso } from "react-virtuoso";
-import { FiorContext, SaveContext } from "./context";
+import { FiorContext } from "./context";
+import { ColumnContext } from "./column/context";
 import EditorRow from "./row";
-
 
 type ShownItem = PlaylistItem & {
   index: number;
@@ -200,7 +191,7 @@ const EditorColumn = ({
     Object.keys(records).map((pl) => [pl, colItem.records.includes(pl)]),
   );
   return (
-    <SaveContext.Provider value={{ save }}>
+    <ColumnContext.Provider value={{ save }}>
       <Flex
         bg="bg"
         p="2"
@@ -239,6 +230,7 @@ const EditorColumn = ({
                 _hover={{ bg: "bg.error", color: "fg.error" }}
                 onClick={() => {
                   delete items.columns[column];
+                  Object.values(items.columns).forEach((r, i) => (r.index = i));
                   reloadColumns();
                 }}
               >
@@ -259,13 +251,16 @@ const EditorColumn = ({
               </Button>
             </MenuTrigger>
             <MenuContent minW="0">
-              {Object.keys(records).length === 0 ? (
-                <EmptyState
-                  title="No playlists found."
-                  description="Add some playlist to start!"
-                />
-              ) : (
-                Object.values(records).map((pl, i) => (
+              <For
+                each={Object.values(records)}
+                fallback={
+                  <EmptyState
+                    title="No playlists found."
+                    description="Add some playlist to start!"
+                  />
+                }
+              >
+                {(pl, i) => (
                   <MenuItem
                     key={pl.playlist_id}
                     value={pl.playlist_id}
@@ -281,8 +276,8 @@ const EditorColumn = ({
                   >
                     {pl.title + " - " + pl.channel_title}
                   </MenuItem>
-                ))
-              )}
+                )}
+              </For>
             </MenuContent>
           </MenuRoot>
         </Flex>
@@ -361,7 +356,9 @@ const EditorColumn = ({
               variant="surface"
               m="1"
               onClick={() => {
-                navigate(`/play/${Object.keys(playlistItems).join("")}/`);
+                navigate(
+                  `/play/${Object.keys(records).join("")}/?fior=${column}`,
+                );
               }}
             >
               <LuPlay />
@@ -377,7 +374,7 @@ const EditorColumn = ({
           </Float>
         </Box>
       </Flex>
-    </SaveContext.Provider>
+    </ColumnContext.Provider>
   );
 };
 
