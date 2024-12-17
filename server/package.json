@@ -1,7 +1,8 @@
 {
   "name": "ranyou-server",
   "scripts": {
-    "dev": "bun --env-file=process.env run --hot src/index.ts"
+    "dev": "bun --env-file=process.env run --hot src/index.ts",
+    "start": "bun src/index.ts"
   },
   "dependencies": {
     "@googleapis/youtube": "^20.0.0",
