@@ -69,7 +69,7 @@ api.get("/playlist-items/:playlist-id", async (c) => {
 
 const app = new Hono();
 
-app.use(compress());
+app.use(compress({ encoding: "gzip" }));
 
 app.route("/api", api);
 app
