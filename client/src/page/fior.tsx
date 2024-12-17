@@ -3,14 +3,15 @@ import { ColorModeButton } from "@/components/ui/color-mode";
 import { loadFior, PlaylistData, readPlaylistData, saveFior } from "@/lib/fior";
 import { Button } from "@/components/ui/button";
 
-import { Link } from "wouter";
+// import { Link } from "wouter";
 
 import { useContext, useEffect, useMemo, useState } from "react";
 
 import { v4 } from "uuid";
-import RecordsContext from "@/app-context";
+import RecordsContext from "@/root-context";
 import EditorColumn from "./fior/column";
 import { FiorContext } from "./fior/context";
+import { Link } from "@tanstack/react-router";
 
 // TODO: add random selection
 
@@ -56,7 +57,7 @@ const EditorGrid = ({
 
 // TODO: fix various data races, maybe create a Loading class.
 
-const Fior = () => {
+const FiorPage = () => {
   const { records } = useContext(RecordsContext);
   const items = useMemo(loadFior, []);
   const [columns, setColumns] = useState(() => Object.keys(items.columns));
@@ -85,7 +86,7 @@ const Fior = () => {
       <Flex w="full" h="100vh" direction="column" gap="2" p="2">
         <Flex alignItems="baseline" gap="3">
           <Heading textStyle="3xl">
-            <Link href="/">ranyou</Link>
+            <Link to="/">ranyou</Link>
           </Heading>
           <Heading textStyle="2xl">fi(lter) or(der)</Heading>
           <ColorModeButton marginStart="auto" />
@@ -124,4 +125,4 @@ const Fior = () => {
   );
 };
 
-export default Fior;
+export default FiorPage;

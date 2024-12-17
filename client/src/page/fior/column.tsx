@@ -18,13 +18,13 @@ import {
 } from "@/components/ui/menu";
 import { LuList, LuMenu, LuPlay } from "react-icons/lu";
 
-import { useLocation } from "wouter";
+// import { useLocation } from "wouter";
 
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { v4 } from "uuid";
 import { Status } from "@/components/ui/status";
-import RecordsContext from "@/app-context";
+import RecordsContext from "@/root-context";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PlaylistItem } from "ranyou-shared/src";
 
@@ -43,6 +43,7 @@ import { Virtuoso } from "react-virtuoso";
 import { FiorContext } from "./context";
 import { ColumnContext } from "./column/context";
 import EditorRow from "./row";
+import { Link } from "@tanstack/react-router";
 
 type ShownItem = PlaylistItem & {
   index: number;
@@ -154,7 +155,7 @@ const EditorColumn = ({
   reloadColumns: () => void;
   column: string;
 }) => {
-  const [, navigate] = useLocation();
+  // const [, navigate] = useLocation();
   const [rowOutput, setRowOutput] = useState(0);
   const [fiorStatus, setFiorStatus] = useState<StatusValue>("success");
   const [playlistItems, setPlaylistItems] = useState<
@@ -352,17 +353,15 @@ const EditorColumn = ({
           rounded="sm"
         >
           <Flex justifyContent="space-between" alignItems="center">
-            <IconButton
-              variant="surface"
-              m="1"
-              onClick={() => {
-                navigate(
-                  `/play/${Object.keys(records).join("")}/?fior=${column}`,
-                );
-              }}
+            <Link
+              to="/play/$playlistId/$id"
+              params={{ playlistId: Object.keys(records).join(), id: "1" }}
+              search={{ fior: column }}
             >
-              <LuPlay />
-            </IconButton>
+              <IconButton variant="surface" m="1">
+                <LuPlay />
+              </IconButton>
+            </Link>
             Rows: {rowOutput}
             <ListDrawer
               title={colItem.name}

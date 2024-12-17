@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { CheckboxCard } from "@/components/ui/checkbox-card";
 import { Field } from "@/components/ui/field";
 
-import RecordsContext from "@/app-context";
+import RecordsContext from "@/root-context";
 import { fetchRecords, PlaylistRecord } from "@/lib/youtube";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LuPlay, LuTrash2 } from "react-icons/lu";
@@ -25,7 +25,8 @@ import {
   ActionBarSelectionTrigger,
   ActionBarSeparator,
 } from "@/components/ui/action-bar";
-import { useLocation } from "wouter";
+import { Link } from "@tanstack/react-router";
+// import { useLocation } from "wouter";
 
 const numLen = (num: number) => Math.ceil(Math.log10(num + 1));
 
@@ -38,7 +39,6 @@ const RecordComponent = ({
   checked: boolean;
   checkPlaylist: (checked: boolean) => void;
 }) => {
-  const [, navigate] = useLocation();
   return (
     <Center
       position="relative"
@@ -54,12 +54,13 @@ const RecordComponent = ({
           <HStack>
             <Badge variant="solid">{pr.privacy_status}</Badge>
             <Text>{pr.published_at.toDateString()}</Text>
-            <Button
-              ms="auto"
-              h="inherit"
-              onClick={() => navigate("/play/" + pr.playlist_id)}
-            >
-              Play
+            <Button ms="auto" h="inherit">
+              <Link
+                to="/play/$playlistId"
+                params={{ playlistId: pr.playlist_id }}
+              >
+                Play
+              </Link>
             </Button>
           </HStack>
         }
@@ -80,7 +81,6 @@ const RecordComponent = ({
 };
 
 const MenuPage = () => {
-  const [, navigate] = useLocation();
   // const [selectedPlaylists, setSelectedPlaylists] = useState<string[]>([]);
   const [playlistId, setPlaylistId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -182,12 +182,12 @@ const MenuPage = () => {
             <LuTrash2 />
             Delete
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            colorPalette="green"
-            onClick={() => navigate("/play/" + checkedRecords[0])}
-          >
+          <Button variant="outline" size="sm" colorPalette="green">
+            {/*<Link to="/play/$playlistId" params={{ playlistId: checkedRecords[0] }}>
+              Play
+            </Link>
+            */
+            /**TODO: implement the above*/}
             <LuPlay />
             Play
           </Button>

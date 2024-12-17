@@ -27,11 +27,10 @@ import { ColorModeButton } from "@/components/ui/color-mode";
 import ReactPlayer from "react-player";
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
 
-import RecordsContext from "@/app-context";
+import RecordsContext from "@/root-context";
 import { fetchItems, fetchRecords, PlaylistItem } from "@/lib/youtube";
 
 import iso8601, { Duration } from "iso8601-duration";
-import { Link, useLocation, useSearch } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import { Toaster, toaster } from "@/components/ui/toaster";
 import {
@@ -47,11 +46,10 @@ import {
 } from "@/components/ui/menu";
 import { LuChevronDown } from "react-icons/lu";
 import { columnQuery, loadFior } from "@/lib/fior";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 export interface IPlayContext {
   playlistId: string;
-  /** 0 based index */
-  gotoIndex: (i: number) => void;
   items: PlaylistItem[];
   itemIndex: number;
   setItemIndex: (n: number) => void;
@@ -59,10 +57,9 @@ export interface IPlayContext {
 
 const PlayContext = createContext<IPlayContext>({
   playlistId: "",
-  gotoIndex: () => {},
   items: [],
   itemIndex: 0,
-  setItemIndex: () => {},
+  setItemIndex: () => { },
 });
 
 // import { randomString } from "@/lib/random";
@@ -89,46 +86,9 @@ const toShownItem = (pi: PlaylistItem, index: number): ShownItem => ({
 
 // TODO: deduplicate before saving on server
 
-// video_id: string;
-// title: string;
-// description: string;
-// note: string;
-// position: number;
-// channel_title: string;
-// channel_id: string;
-// duration: number;
-// added_at: Date;
-// published_at: Date;
-
 const displayDuration = (d: Duration) => {
   const dMS = d.minutes + ":" + d.seconds?.toString().padStart(2, "0");
   return d.hours ? d.hours + ":" + dMS.padStart(5, "0") : dMS;
-};
-
-// function getQueryVariable(variable: string) {
-//   const query = window.location.search.substring(1);
-//   const vars = query.split("&");
-//   for (let i = 0; i < vars.length; i++) {
-//     const pair = vars[i].split("=");
-//     if (decodeURIComponent(pair[0]) == variable) {
-//       return decodeURIComponent(pair[1]);
-//     }
-//   }
-//   console.log("Query variable %s not found", variable);
-// }
-
-const useGetQuery = (v: string): [string | null] => {
-  const queryString = useSearch();
-  const [query, setQuery] = useState<string | null>(null);
-  useEffect(() => {
-    const vars = queryString.split("&");
-    for (let i = 0; i < vars.length; i++) {
-      const pair = vars[i].split("=");
-      if (decodeURIComponent(pair[0]) == v)
-        setQuery(decodeURIComponent(pair[1]));
-    }
-  }, [queryString, v]);
-  return [query];
 };
 
 const ItemRow = ({
@@ -142,7 +102,7 @@ const ItemRow = ({
   durationStat: number;
   virtuoso: React.RefObject<VirtuosoHandle>;
 }) => {
-  const { itemIndex, items, gotoIndex } = useContext(PlayContext);
+  const { playlistId, itemIndex, items } = useContext(PlayContext);
   const duration = iso8601.parse(item.duration);
   const durationStr = displayDuration(duration);
   const durationS = iso8601.toSeconds(duration);
@@ -161,28 +121,35 @@ const ItemRow = ({
     bgImage = "none";
   }
   return (
-    <Flex
-      p="3"
-      cursor="pointer"
-      justifyContent="space-between"
-      borderY="1px solid gray"
-      backgroundImage={bgImage}
-      color={fgColor}
-      backgroundColor={bgColor}
-      _active={{
-        backgroundColor: "gray.emphasized",
-        backgroundImage: "none",
-      }}
-      onClick={() => {
-        gotoIndex(item.index);
-        const behavior =
-          Math.abs(index - itemIndex) < items.length / 100 ? "smooth" : "auto";
-        virtuoso.current?.scrollToIndex({ index: index, behavior });
-      }}
+    <Link
+      to="/play/$playlistId/$id"
+      params={{ playlistId, id: item.index.toString() }}
     >
-      <span>{item.title}</span>
-      <span>{durationStr}</span>
-    </Flex>
+      <Flex
+        p="3"
+        cursor="pointer"
+        justifyContent="space-between"
+        borderY="1px solid gray"
+        backgroundImage={bgImage}
+        color={fgColor}
+        backgroundColor={bgColor}
+        _active={{
+          backgroundColor: "gray.emphasized",
+          backgroundImage: "none",
+        }}
+        onClick={() => {
+          // gotoIndex(item.index);
+          const behavior =
+            Math.abs(index - itemIndex) < items.length / 100
+              ? "smooth"
+              : "auto";
+          virtuoso.current?.scrollToIndex({ index: index, behavior });
+        }}
+      >
+        <span>{item.title}</span>
+        <span>{durationStr}</span>
+      </Flex>
+    </Link>
   );
 };
 
@@ -249,8 +216,14 @@ const SearchList = ({
 };
 
 const Player = () => {
+  const navigate = useNavigate({});
   const [playing, setPlaying] = useState(false);
-  const { items, itemIndex, gotoIndex } = useContext(PlayContext);
+  const { playlistId, items, itemIndex } = useContext(PlayContext);
+  const gotoIndex = () =>
+    navigate({
+      to: "/play/$playlistId/$id",
+      params: { playlistId, id: itemIndex.toString() },
+    });
   if (items.length <= itemIndex)
     return (
       <Center h="full">
@@ -273,17 +246,17 @@ const Player = () => {
       width="100%"
       height="100%"
       onPlay={() => setPlaying(true)}
-      onEnded={() => gotoIndex(itemIndex)}
+      onEnded={() => gotoIndex()}
       onError={() => {
         toaster.create({
           title: "error playing video",
           type: "error",
           action: {
             label: "close",
-            onClick: () => {},
+            onClick: () => { },
           },
         });
-        gotoIndex(itemIndex);
+        gotoIndex();
       }}
     />
   );
@@ -311,7 +284,12 @@ const Crumbs = () => {
               value={pr.playlist_id}
               asChild
             >
-              <Link href={"/play/" + pr.playlist_id}>{pr.title}</Link>
+              <Link
+                to="/play/$playlistId/$id"
+                params={{ playlistId: pr.playlist_id, id: "1" }}
+              >
+                {pr.title}
+              </Link>
             </MenuItem>
           ))}
         </MenuContent>
@@ -333,13 +311,12 @@ const calcDurationInfo = (items: PlaylistItem[]) => {
   return { max, mean };
 };
 
-const useItems = (playlistId: string) => {
+const useItems = (playlistId: string, fiorParam?: string) => {
   const [durationInfo, setDurationInfo] = useState({ max: 0, mean: 0 });
   const [loading, setLoading] = useState<"loading" | "loaded" | "failed">(
     "loading",
   );
   const { records, addRecord } = useContext(RecordsContext);
-  const [fiorParam] = useGetQuery("fior");
   const fiorColumn = useMemo(
     () => (fiorParam ? loadFior().columns[fiorParam] : null),
     [fiorParam],
@@ -386,35 +363,30 @@ const useItems = (playlistId: string) => {
 const PlayPage = ({
   initItemIndex,
   playlistId,
+  fiorParam,
 }: {
   initItemIndex: number;
   playlistId: string;
+  fiorParam?: string;
 }) => {
-  const [, navigate] = useLocation();
-  const [fiorParam] = useGetQuery("fior");
   const fiorColumn = useMemo(
     () => (fiorParam ? loadFior().columns[fiorParam] : null),
     [fiorParam],
   );
   const [itemIndex, setItemIndex] = useState(initItemIndex - 1);
-  const { loading, items, durationInfo, shownItems, setShownItems } =
-    useItems(playlistId);
+  const { loading, items, durationInfo, shownItems, setShownItems } = useItems(
+    playlistId,
+    fiorParam,
+  );
 
   const virtuoso = useRef<VirtuosoHandle>(null);
-  const gotoIndex = (i: number) => {
-    setItemIndex(i);
-    const fParam = fiorParam ? `?fior=${fiorParam}` : "";
-    navigate(`/play/${playlistId}/${++i}` + fParam);
-  };
 
   const playProvider: IPlayContext = {
     playlistId,
     items,
-    gotoIndex,
     itemIndex,
     setItemIndex,
   };
-  useEffect(() => console.log(loading), [loading]);
 
   if (loading === "failed")
     return (

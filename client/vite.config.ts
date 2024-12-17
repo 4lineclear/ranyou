@@ -1,4 +1,5 @@
 import react from "@vitejs/plugin-react";
+import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import cssAutoImport from "vite-plugin-css-auto-import";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -13,7 +14,13 @@ export default defineConfig(({ command }) => {
   }
 });
 
-const plugins = () => [react(), cssAutoImport(), tsconfigPaths()];
+const plugins = () => [
+  react(),
+  cssAutoImport(),
+  tsconfigPaths(),
+  TanStackRouterVite(),
+];
+
 function build(): UserConfig {
   return {
     plugins: plugins(),
