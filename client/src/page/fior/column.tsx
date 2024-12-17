@@ -354,9 +354,12 @@ const EditorColumn = ({
         >
           <Flex justifyContent="space-between" alignItems="center">
             <Link
-              to="/play/$playlistId/$id"
-              params={{ playlistId: Object.keys(records).join(), id: "1" }}
-              search={{ fior: column }}
+              to="/play"
+              search={{
+                playlistId: Object.keys(records).join(),
+                index: 1,
+                fior: column,
+              }}
             >
               <IconButton variant="surface" m="1">
                 <LuPlay />

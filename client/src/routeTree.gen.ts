@@ -13,8 +13,7 @@ import { createFileRoute } from "@tanstack/react-router";
 // Import Routes
 
 import { Route as rootRoute } from "./routes/__root";
-import { Route as PlayPlaylistIdIndexImport } from "./routes/play/$playlistId/index";
-import { Route as PlayPlaylistIdIdIndexImport } from "./routes/play/$playlistId/$id/index";
+import { Route as PlayIndexImport } from "./routes/play/index";
 
 // Create Virtual Routes
 
@@ -35,21 +34,11 @@ const IndexLazyRoute = IndexLazyImport.update({
   getParentRoute: () => rootRoute,
 } as any).lazy(() => import("./routes/index.lazy").then((d) => d.Route));
 
-const PlayPlaylistIdIndexRoute = PlayPlaylistIdIndexImport.update({
-  id: "/play/$playlistId/",
-  path: "/play/$playlistId/",
+const PlayIndexRoute = PlayIndexImport.update({
+  id: "/play/",
+  path: "/play/",
   getParentRoute: () => rootRoute,
-} as any).lazy(() =>
-  import("./routes/play/$playlistId/index.lazy").then((d) => d.Route),
-);
-
-const PlayPlaylistIdIdIndexRoute = PlayPlaylistIdIdIndexImport.update({
-  id: "/play/$playlistId/$id/",
-  path: "/play/$playlistId/$id/",
-  getParentRoute: () => rootRoute,
-} as any).lazy(() =>
-  import("./routes/play/$playlistId/$id/index.lazy").then((d) => d.Route),
-);
+} as any).lazy(() => import("./routes/play/index.lazy").then((d) => d.Route));
 
 // Populate the FileRoutesByPath interface
 
@@ -69,18 +58,11 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof FiorLazyImport;
       parentRoute: typeof rootRoute;
     };
-    "/play/$playlistId/": {
-      id: "/play/$playlistId/";
-      path: "/play/$playlistId";
-      fullPath: "/play/$playlistId";
-      preLoaderRoute: typeof PlayPlaylistIdIndexImport;
-      parentRoute: typeof rootRoute;
-    };
-    "/play/$playlistId/$id/": {
-      id: "/play/$playlistId/$id/";
-      path: "/play/$playlistId/$id";
-      fullPath: "/play/$playlistId/$id";
-      preLoaderRoute: typeof PlayPlaylistIdIdIndexImport;
+    "/play/": {
+      id: "/play/";
+      path: "/play";
+      fullPath: "/play";
+      preLoaderRoute: typeof PlayIndexImport;
       parentRoute: typeof rootRoute;
     };
   }
@@ -91,51 +73,41 @@ declare module "@tanstack/react-router" {
 export interface FileRoutesByFullPath {
   "/": typeof IndexLazyRoute;
   "/fior": typeof FiorLazyRoute;
-  "/play/$playlistId": typeof PlayPlaylistIdIndexRoute;
-  "/play/$playlistId/$id": typeof PlayPlaylistIdIdIndexRoute;
+  "/play": typeof PlayIndexRoute;
 }
 
 export interface FileRoutesByTo {
   "/": typeof IndexLazyRoute;
   "/fior": typeof FiorLazyRoute;
-  "/play/$playlistId": typeof PlayPlaylistIdIndexRoute;
-  "/play/$playlistId/$id": typeof PlayPlaylistIdIdIndexRoute;
+  "/play": typeof PlayIndexRoute;
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute;
   "/": typeof IndexLazyRoute;
   "/fior": typeof FiorLazyRoute;
-  "/play/$playlistId/": typeof PlayPlaylistIdIndexRoute;
-  "/play/$playlistId/$id/": typeof PlayPlaylistIdIdIndexRoute;
+  "/play/": typeof PlayIndexRoute;
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/fior" | "/play/$playlistId" | "/play/$playlistId/$id";
+  fullPaths: "/" | "/fior" | "/play";
   fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/fior" | "/play/$playlistId" | "/play/$playlistId/$id";
-  id:
-    | "__root__"
-    | "/"
-    | "/fior"
-    | "/play/$playlistId/"
-    | "/play/$playlistId/$id/";
+  to: "/" | "/fior" | "/play";
+  id: "__root__" | "/" | "/fior" | "/play/";
   fileRoutesById: FileRoutesById;
 }
 
 export interface RootRouteChildren {
   IndexLazyRoute: typeof IndexLazyRoute;
   FiorLazyRoute: typeof FiorLazyRoute;
-  PlayPlaylistIdIndexRoute: typeof PlayPlaylistIdIndexRoute;
-  PlayPlaylistIdIdIndexRoute: typeof PlayPlaylistIdIdIndexRoute;
+  PlayIndexRoute: typeof PlayIndexRoute;
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexLazyRoute: IndexLazyRoute,
   FiorLazyRoute: FiorLazyRoute,
-  PlayPlaylistIdIndexRoute: PlayPlaylistIdIndexRoute,
-  PlayPlaylistIdIdIndexRoute: PlayPlaylistIdIdIndexRoute,
+  PlayIndexRoute: PlayIndexRoute,
 };
 
 export const routeTree = rootRoute
@@ -150,8 +122,7 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/fior",
-        "/play/$playlistId/",
-        "/play/$playlistId/$id/"
+        "/play/"
       ]
     },
     "/": {
@@ -160,11 +131,8 @@ export const routeTree = rootRoute
     "/fior": {
       "filePath": "fior.lazy.tsx"
     },
-    "/play/$playlistId/": {
-      "filePath": "play/$playlistId/index.tsx"
-    },
-    "/play/$playlistId/$id/": {
-      "filePath": "play/$playlistId/$id/index.tsx"
+    "/play/": {
+      "filePath": "play/index.tsx"
     }
   }
 }

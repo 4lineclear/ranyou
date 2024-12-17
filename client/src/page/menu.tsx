@@ -18,7 +18,7 @@ import { Field } from "@/components/ui/field";
 import RecordsContext from "@/root-context";
 import { fetchRecords, PlaylistRecord } from "@/lib/youtube";
 import { EmptyState } from "@/components/ui/empty-state";
-import { LuPlay, LuTrash2 } from "react-icons/lu";
+import { LuTrash2 } from "react-icons/lu";
 import {
   ActionBarContent,
   ActionBarRoot,
@@ -26,7 +26,6 @@ import {
   ActionBarSeparator,
 } from "@/components/ui/action-bar";
 import { Link } from "@tanstack/react-router";
-// import { useLocation } from "wouter";
 
 const numLen = (num: number) => Math.ceil(Math.log10(num + 1));
 
@@ -56,8 +55,8 @@ const RecordComponent = ({
             <Text>{pr.published_at.toDateString()}</Text>
             <Button ms="auto" h="inherit">
               <Link
-                to="/play/$playlistId"
-                params={{ playlistId: pr.playlist_id }}
+                to="/play"
+                search={{ playlistId: pr.playlist_id, index: 0 }}
               >
                 Play
               </Link>
@@ -92,6 +91,10 @@ const MenuPage = () => {
 
   const handleSubmit = (e: React.MouseEvent) => {
     e.preventDefault();
+    if (playlistId === "") {
+      setMessage("Empty Id Entered");
+      return;
+    }
     if (records[playlistId]) {
       setMessage("Playlist Already Added");
       return;
@@ -181,15 +184,6 @@ const MenuPage = () => {
           >
             <LuTrash2 />
             Delete
-          </Button>
-          <Button variant="outline" size="sm" colorPalette="green">
-            {/*<Link to="/play/$playlistId" params={{ playlistId: checkedRecords[0] }}>
-              Play
-            </Link>
-            */
-            /**TODO: implement the above*/}
-            <LuPlay />
-            Play
           </Button>
         </ActionBarContent>
       </ActionBarRoot>

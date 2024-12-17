@@ -18,6 +18,8 @@ import {
   Randomize,
   RandomSelect,
   StatusValue,
+  Order,
+  Filter,
 } from "@/lib/fior";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,6 +63,7 @@ const Row = ({
 
 const SearchRow = ({ not, search }: { not?: boolean; search: Search }) => {
   const { save } = useContext(ColumnContext);
+  const [needle, setNeedle] = useState(search.search);
   const [regexStatus, setRegexStatus] = useState<StatusValue>("success");
   const timer = useRef<Timer>();
   const checkRegex = () => {
@@ -92,10 +95,13 @@ const SearchRow = ({ not, search }: { not?: boolean; search: Search }) => {
       <Flex position="relative" w="100%">
         <Editable.Root
           size="sm"
-          value={search.search}
+          value={needle}
           onValueChange={(e) => {
-            setRegexStatus("warning");
             search.search = e.value;
+            setNeedle(e.value);
+            save();
+            if (!search.regex) return;
+            setRegexStatus("warning");
             clearTimeout(timer.current);
             timer.current = setTimeout(checkRegex, 500);
           }}
@@ -449,7 +455,75 @@ const RandomSelectRow = ({
   );
 };
 
-// TODO: add random selection
+const FilterMenuItems = ({
+  rowItem,
+  reloadRow,
+}: {
+  rowItem: Filter;
+  reloadRow: () => void;
+}) => {
+  return (
+    <>
+      {"regex" in rowItem.filter && (
+        <MenuItem
+          value="regex"
+          onClick={() => {
+            if (!("regex" in rowItem.filter)) return;
+            rowItem.filter.regex = !rowItem.filter.regex;
+            reloadRow();
+          }}
+        >
+          Regex
+          {rowItem.filter.regex && (
+            <Box ms="auto">
+              <LuCheck />
+            </Box>
+          )}
+        </MenuItem>
+      )}
+      <MenuItem
+        value="exclude"
+        onClick={() => {
+          rowItem.not = !rowItem.not;
+          reloadRow();
+        }}
+      >
+        Exclude
+        {rowItem.not && (
+          <Box ms="auto">
+            <LuCheck />
+          </Box>
+        )}
+      </MenuItem>
+    </>
+  );
+};
+
+
+const OrderMenuItems = ({
+  rowItem,
+  reloadRow,
+}: {
+  rowItem: Order;
+  reloadRow: () => void;
+}) => {
+  return (
+    <MenuItem
+      value="reverse"
+      onClick={() => {
+        rowItem.rev = !rowItem.rev;
+        reloadRow();
+      }}
+    >
+      Reverse
+      {rowItem.rev && (
+        <Box ms="auto">
+          <LuCheck />
+        </Box>
+      )}
+    </MenuItem>
+  );
+};
 
 const EditorRow = ({
   column,
@@ -490,9 +564,6 @@ const EditorRow = ({
       ) : (
         <CheckRow check={rowItem.filter} not={rowItem.not} />
       )}
-      {/* TODO: break this up into the seperate row componenets
-                Probably best to move generic version to row.
-      */}
       <MenuRoot>
         <MenuTrigger ms="auto" asChild>
           <Float offset="4">
@@ -503,54 +574,9 @@ const EditorRow = ({
         </MenuTrigger>
         <MenuContent>
           {"filter" in rowItem ? (
-            <>
-              {"regex" in rowItem.filter && (
-                <MenuItem
-                  value="regex"
-                  onClick={() => {
-                    if (!("regex" in rowItem.filter)) return;
-                    rowItem.filter.regex = !rowItem.filter.regex;
-                    reloadRow();
-                  }}
-                >
-                  Regex
-                  {rowItem.filter.regex && (
-                    <Box ms="auto">
-                      <LuCheck />
-                    </Box>
-                  )}
-                </MenuItem>
-              )}
-              <MenuItem
-                value="exclude"
-                onClick={() => {
-                  rowItem.not = !rowItem.not;
-                  reloadRow();
-                }}
-              >
-                Exclude
-                {rowItem.not && (
-                  <Box ms="auto">
-                    <LuCheck />
-                  </Box>
-                )}
-              </MenuItem>
-            </>
+            <FilterMenuItems rowItem={rowItem} reloadRow={reloadRow} />
           ) : (
-            <MenuItem
-              value="reverse"
-              onClick={() => {
-                rowItem.rev = !rowItem.rev;
-                reloadRow();
-              }}
-            >
-              Reverse
-              {rowItem.rev && (
-                <Box ms="auto">
-                  <LuCheck />
-                </Box>
-              )}
-            </MenuItem>
+            <OrderMenuItems rowItem={rowItem} reloadRow={reloadRow} />
           )}
           <MenuItem
             value="delete"

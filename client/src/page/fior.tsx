@@ -13,8 +13,6 @@ import EditorColumn from "./fior/column";
 import { FiorContext } from "./fior/context";
 import { Link } from "@tanstack/react-router";
 
-// TODO: add random selection
-
 const EditorGrid = ({
   columns,
   reloadColumns,
@@ -41,15 +39,7 @@ const EditorGrid = ({
   );
 };
 
-// TODO: move header to be it's own component
-
-// TODO: consider moving from uuids to user-set names for columns
-
 // TODO: setup proper record & item provider
-
-// TODO: implement DRY
-
-// TODO: break up this file
 
 // TODO: fix saving system, probably use some state management library
 

@@ -150,6 +150,8 @@ const applyOperator = (
   return false;
 };
 
+// TODO: consider using & returning indices instead of items
+
 export const readPlaylistData = async (records: PlaylistRecords) => {
   const playlists: PlaylistData = {};
   for (const record of Object.values(records)) {
@@ -199,12 +201,76 @@ export const columnQuery = ({
   return output;
 };
 
-// TODO: add rng seeds.
-
-// TODO: break down this function into smaller parts
-
-// TODO: consider using & returning indices instead of items
 const cleanStr = (s: string) => s.toLowerCase().replace(/\s+/g, "");
+
+const filterQuery = (
+  filter: RandomSelect | Search | Predicate,
+  items: PlaylistItem[],
+  not?: boolean,
+) => {
+  let run: (pi: PlaylistItem, i: number) => boolean;
+  // const filter = data.filter;
+  if ("search" in filter) {
+    if (filter.cols.length === 0 || filter.search === "") return items;
+    const searchString = cleanStr(filter.search);
+    let search = (h: string) => cleanStr(h).includes(searchString);
+    if (filter.regex) {
+      try {
+        const re = new RegExp(filter.search);
+        search = (h) => re.test(cleanStr(h));
+      } catch {
+        return items;
+      }
+    }
+    run = (pi, i) => {
+      for (const col of filter.cols) {
+        if (col === "index") {
+          if (search(i.toString())) return true;
+        } else {
+          if (!pi[col]) continue;
+          if (search(pi[col].toString())) return true;
+        }
+      }
+      return false;
+    };
+  } else if ("operator" in filter) {
+    if (!filter.cols || filter.value === "") return items;
+    const keys = Object.entries(filter.cols)
+      .filter(([, v]) => v)
+      .map(([k]) => k as Key);
+
+    let value: string | number | Date | Duration = filter.value;
+    const vType = PlItemData[keys[0]];
+
+    if (vType === "number") value = parseFloat(filter.value);
+    if (vType === "duration") value = toSec(filter.value);
+    if (vType === "date") value = new Date(filter.value);
+
+    run = (pi, i) => {
+      return keys.some((col) =>
+        applyOperator(
+          col === "index" ? i : col === "duration" ? toSec(pi[col]) : pi[col],
+          value,
+          filter.operator,
+        ),
+      );
+    };
+  } else if ("rngSeed" in filter) {
+    if (filter.selectCount >= items.length || filter.selectCount <= 0)
+      return items;
+    const rng = new Random(filter.rngSeed).uniform();
+    const randomItems: [PlaylistItem, number][] = items.map((pi, i) => [pi, i]);
+    shuffle(rng, randomItems);
+    const sliced = not
+      ? randomItems.slice(filter.selectCount)
+      : randomItems.slice(0, filter.selectCount);
+    return sliced.toSorted(([, i1], [, i2]) => i1 - i2).map(([pi]) => pi);
+  } else {
+    return items;
+  }
+  return not ? items.filter((pi, i) => !run(pi, i)) : items.filter(run);
+};
+
 export const rowQuery = ({
   data,
   items,
@@ -213,79 +279,11 @@ export const rowQuery = ({
   items: PlaylistItem[];
 }) => {
   if ("filter" in data) {
-    let run: (pi: PlaylistItem, i: number) => boolean;
-    const filter = data.filter;
-    if ("search" in filter) {
-      if (filter.cols.length === 0 || filter.search === "") return items;
-      const searchString = cleanStr(filter.search);
-      let search = (h: string) => cleanStr(h).includes(searchString);
-      if (filter.regex) {
-        try {
-          const re = new RegExp(filter.search);
-          search = (h) => re.test(cleanStr(h));
-        } catch {
-          return items;
-        }
-      }
-      run = (pi, i) => {
-        for (const col of filter.cols) {
-          if (col === "index") {
-            if (search(i.toString())) return true;
-          } else {
-            if (!pi[col]) continue;
-            if (search(pi[col].toString())) return true;
-          }
-        }
-        return false;
-      };
-    } else if ("operator" in filter) {
-      if (!filter.cols || filter.value === "") return items;
-      const keys = Object.entries(filter.cols)
-        .filter(([, v]) => v)
-        .map(([k]) => k as Key);
-
-      let value: string | number | Date | Duration = filter.value;
-      const vType = PlItemData[keys[0]];
-
-      if (vType === "number") value = parseFloat(filter.value);
-      if (vType === "duration") value = toSec(filter.value);
-      if (vType === "date") value = new Date(filter.value);
-
-      run = (pi, i) => {
-        return keys.some((col) =>
-          applyOperator(
-            col === "index" ? i : col === "duration" ? toSec(pi[col]) : pi[col],
-            value,
-            filter.operator,
-          ),
-        );
-      };
-    } else if ("rngSeed" in filter) {
-      if (filter.selectCount >= items.length || filter.selectCount <= 0)
-        return items;
-      const rng = new Random(filter.rngSeed).uniform();
-      const randomItems: [PlaylistItem, number][] = items.map((pi, i) => [
-        pi,
-        i,
-      ]);
-      shuffle(rng, randomItems);
-      // console.log(
-      //   randomItems
-      //     .slice(0, filter.selectCount)
-      //     .toSorted(([, i1], [, i2]) => i1 - i2),
-      // );
-      const sliced = data.not
-        ? randomItems.slice(filter.selectCount)
-        : randomItems.slice(0, filter.selectCount);
-      return sliced.toSorted(([, i1], [, i2]) => i1 - i2).map(([pi]) => pi);
-    } else {
-      return items;
-    }
-    return data.not ? items.filter((pi, i) => !run(pi, i)) : items.filter(run);
+    return filterQuery(data.filter, items, data.not);
   } else {
     if ("cols" in data.order) {
       const cols = data.order.cols;
-      const sort = (a: PlaylistItem, b: PlaylistItem) => {
+      const cmp = (a: PlaylistItem, b: PlaylistItem) => {
         return cols.reduce((p, k) => {
           p *= 10;
           if (k === "index") return p + 1;
@@ -304,8 +302,8 @@ export const rowQuery = ({
         }, 0);
       };
       return data.rev
-        ? items.toSorted((a, b) => -sort(a, b))
-        : items.toSorted(sort);
+        ? items.toSorted((a, b) => -cmp(a, b))
+        : items.toSorted(cmp);
     } else {
       const rng = new Random(data.order.rngSeed).uniform();
       shuffle(rng, items);

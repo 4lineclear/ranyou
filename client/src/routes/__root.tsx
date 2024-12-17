@@ -11,6 +11,8 @@ import NotFound from "@/page/not-found";
 import { Outlet, createRootRoute } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 
+// TODO: consider adding tanstack/query in the future for handling fetches
+
 export const Route = createRootRoute({
   component: RootComponent,
   notFoundComponent: NotFound,
