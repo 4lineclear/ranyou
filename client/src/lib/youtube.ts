@@ -3,6 +3,7 @@ import {
   PlaylistItem,
   isPlaylistRecord,
 } from "ranyou-shared/src/index";
+import { db } from "./db";
 
 export type { PlaylistItem, PlaylistRecord };
 export type PlaylistRecords = Record<string, PlaylistRecord>;
@@ -43,6 +44,15 @@ export const fetchItems = async (
   playlistId: string,
   opts?: RequestInit,
 ): Promise<PlaylistItem[]> => {
+  const items = await db.items
+    .where("playlist_id")
+    .equals(playlistId)
+    .toArray();
+  if (items.length !== 0) {
+    return items;
+  }
   const res = await fetch("/api/playlist-items/" + playlistId, opts);
-  return await res.json();
+  const resItems = await res.json();
+  if (Array.isArray(resItems)) await db.items.bulkAdd(resItems);
+  return resItems;
 };

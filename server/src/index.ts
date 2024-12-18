@@ -92,6 +92,6 @@ record.create().finally(console.info);
 item.create().finally(console.info);
 
 export default {
-  port: 8000,
+  port: process.env["PORT"] ?? 8000,
   ...app,
 };

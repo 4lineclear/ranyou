@@ -13,6 +13,7 @@
     "@chakra-ui/react": "^3.2.3",
     "@tanstack/react-router": "^1.90.0",
     "@tanstack/router-devtools": "^1.90.0",
+    "dexie": "^4.0.10",
     "iso8601-duration": "^2.1.2",
     "next-themes": "^0.4.4",
     "random": "^5.1.1",
